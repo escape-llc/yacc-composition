@@ -1,0 +1,22 @@
+﻿{
+	"TraceSwitches": {
+		"AxisCommon": "Error",
+		"CandlestickSeries": "Error",
+		"CategoryAxis": "Error",
+		"Chart": "Verbose",
+		"ColumnSeries": "Verbose",
+		"DataSeries": "Error",
+		"DataSource": "Verbose",
+		"HeatmapSeries": "Error",
+		"HorizontalBand": "Error",
+		"HorizontalRule": "Error",
+		"ImageSourceMarkerSeries": "Verbose",
+		"LineSeries": "Error",
+		"MarkerSeries": "Error",
+		"PieSeries": "Error",
+		"StackedColumnSeries": "Error",
+		"ValueAxis": "Error",
+		"ValueAxisGrid": "Error",
+		"ValueLabels": "Error"
+	}
+}
