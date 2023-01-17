@@ -1,0 +1,44 @@
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:local="using:eScapeLLC.UWP.Composition.Charts">
+	<Style x:Key="AxisLabel_LEFT" TargetType="TextBlock">
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="FontSize" Value="10"/>
+		<Setter Property="TextAlignment" Value="Right"/>
+		<Setter Property="VerticalAlignment" Value="Center"/>
+		<Setter Property="HorizontalAlignment" Value="Right"/>
+	</Style>
+	<Style x:Key="AxisLabel_RIGHT" TargetType="TextBlock">
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="FontSize" Value="10"/>
+		<Setter Property="TextAlignment" Value="Left"/>
+		<Setter Property="VerticalAlignment" Value="Center"/>
+		<Setter Property="HorizontalAlignment" Value="Left"/>
+	</Style>
+	<Style x:Key="AxisLabel_HORZ" TargetType="TextBlock">
+		<Setter Property="Foreground" Value="White"/>
+		<Setter Property="FontSize" Value="10"/>
+		<Setter Property="TextAlignment" Value="Center"/>
+		<Setter Property="TextWrapping" Value="Wrap"/>
+		<Setter Property="VerticalAlignment" Value="Center"/>
+		<Setter Property="HorizontalAlignment" Value="Center"/>
+	</Style>
+	<DataTemplate x:Key="TextBlock">
+		<TextBlock Text="{Binding Text}"/>
+	</DataTemplate>
+	<Style TargetType="local:Chart">
+			<Setter Property="Template">
+					<Setter.Value>
+							<ControlTemplate TargetType="local:Chart">
+								<Canvas x:Name="PART_Canvas"
+									Background="{TemplateBinding Background}"
+									Opacity="{TemplateBinding Opacity}"
+									HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+									VerticalAlignment="{TemplateBinding VerticalAlignment}" ChildrenTransitions="{TemplateBinding Transitions}">
+								</Canvas>
+							</ControlTemplate>
+					</Setter.Value>
+			</Setter>
+	</Style>
+</ResourceDictionary>
