@@ -6,6 +6,32 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public abstract class Style_Brush {
 		public abstract CompositionBrush CreateBrush(Compositor c);
 	}
+	public class Style_Stroke {
+		public double StrokeThickness { get; set; } = double.NaN;
+		public double StrokeMiterLimit { get; set; } = double.NaN;
+		public CompositionStrokeCap StrokeStartCap { get; set; }
+		public CompositionStrokeCap StrokeEndCap { get; set; }
+		public CompositionStrokeLineJoin StrokeLineJoin { get; set; }
+		//public double StrokeDashOffset { get; set; } = double.NaN;
+		//public CompositionStrokeCap StrokeDashCap { get; set; }
+		//public CompositionStrokeDashArray StrokeDashArray { get; set; }
+		/// <summary>
+		/// Force Stroke to be PX units regardless.
+		/// </summary>
+		public bool IsStrokeNonScaling { get; set; } = true;
+		public virtual void Apply(CompositionSpriteShape sprite) {
+			sprite.IsStrokeNonScaling = IsStrokeNonScaling;
+			if (!double.IsNaN(StrokeThickness)) {
+				sprite.StrokeThickness = (float)StrokeThickness;
+			}
+			if (!double.IsNaN(StrokeMiterLimit)) {
+				sprite.StrokeMiterLimit = (float)StrokeMiterLimit;
+			}
+			sprite.StrokeLineJoin = StrokeLineJoin;
+			sprite.StrokeStartCap = StrokeStartCap;
+			sprite.StrokeEndCap = StrokeEndCap;
+		}
+	}
 	public class Brush_Color : Style_Brush {
 		public Windows.UI.Color Color { get; set; }
 		public override CompositionBrush CreateBrush(Compositor c) => c.CreateColorBrush(Color);

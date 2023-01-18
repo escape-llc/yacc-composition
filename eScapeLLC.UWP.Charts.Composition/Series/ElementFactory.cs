@@ -1,91 +1,139 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+﻿using eScapeLLC.UWP.Charts.Composition.Events;
 using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
-	/// Ability to create elements for column series types.
+	/// Entry interface for element factory.
+	/// A specific context implements this plus other interfaces as necessary to support sprite creation.
 	/// </summary>
-	public interface IColumnElementFactory {
+	public interface IElementFactoryContext {
 		/// <summary>
-		/// Create the sprite.  Treats as a rectangle.
+		/// Use for creating composition objects.
 		/// </summary>
-		/// <param name="c">Use to create elements.</param>
-		/// <param name="width">Column width.  Always refers to the x-axis.</param>
-		/// <param name="height">Column height.  Always refers to the y-axis.</param>
-		/// <param name="caxis">Orientation of category axis.</param>
-		/// <param name="vaxis">Orientation of value axis.</param>
-		/// <returns></returns>
-		CompositionSpriteShape CreateElement(Compositor c, double width, double height, AxisOrientation caxis, AxisOrientation vaxis);
+		Compositor Compositor { get; }
 	}
 	/// <summary>
-	/// Default implementation for creating rounded rectangle sprites.
+	/// Additional information for creating rectangle geometry.
 	/// </summary>
-	public class ColumnElementFactory_Default : IColumnElementFactory {
-		#region properties
-		public Style_Brush FillBrush { get; set; }
-		public Style_Brush StrokeBrush { get; set; }
-		public double StrokeThickness { get; set; } = double.NaN;
-		public double StrokeMiterLimit { get; set; } = double.NaN;
-		public CompositionStrokeCap StrokeStartCap { get; set; }
-		public CompositionStrokeCap StrokeEndCap { get; set; }
-		public CompositionStrokeLineJoin StrokeLineJoin { get; set; }
-		public double StrokeDashOffset { get; set; } = double.NaN;
-		public CompositionStrokeCap StrokeDashCap { get; set; }
-		//public CompositionStrokeDashArray StrokeDashArray { get; set; }
+	public interface IElementRectangleContext {
 		/// <summary>
-		/// Force Stroke to be PX units regardless.
+		/// X axis extent.
 		/// </summary>
-		public bool IsStrokeNonScaling { get; set; } = true;
+		double Width { get; }
 		/// <summary>
-		/// Corner radius is in NDC units (output side of transform).
+		/// Y axis extent.
 		/// </summary>
-		public double CornerRadiusX { get; set; } = double.NaN;
+		double Height { get; }
+	}
+	/// <summary>
+	/// Additional information about the current value's data for this sprite.
+	/// </summary>
+	public interface IElementCategoryValueContext {
 		/// <summary>
-		/// Corner radius is in NDC units (output side of transform).
+		/// Information about category axis.
 		/// </summary>
-		public double CornerRadiusY { get; set; } = double.NaN;
-		#endregion
-		public ColumnElementFactory_Default() { }
+		Axis_Extents CategoryAxis { get; }
+		/// <summary>
+		/// Information about value axis.
+		/// </summary>
+		Axis_Extents ValueAxis { get; }
+		/// <summary>
+		/// The category (index) value.
+		/// </summary>
+		int Category { get; }
+		/// <summary>
+		/// The category offset for placement of geometry.
+		/// </summary>
+		double CategoryOffset { get; }
+		/// <summary>
+		/// The data value.
+		/// </summary>
+		double Value { get; }
+	}
+	/// <summary>
+	/// Additional information about the path to use in the sprite.
+	/// </summary>
+	public interface IElementCompositionPath {
+		/// <summary>
+		/// The path to use for this sprite.
+		/// </summary>
+		CompositionPath Path { get; }
+	}
+	/// <summary>
+	/// Default context for basic use case in category/value scenario.
+	/// </summary>
+	public class CategoryValueContext : IElementFactoryContext, IElementCategoryValueContext {
+		/// <summary>
+		/// Use for creating composition objects.
+		/// </summary>
+		public Compositor Compositor { get; private set; }
+		/// <summary>
+		/// Information about category axis.
+		/// </summary>
+		public Axis_Extents CategoryAxis { get; private set; }
+		/// <summary>
+		/// Information about value axis.
+		/// </summary>
+		public Axis_Extents ValueAxis { get; private set; }
+		/// <summary>
+		/// The category (index) value.
+		/// </summary>
+		public int Category { get; private set; }
+		/// <summary>
+		/// The category offset for placement of geometry.
+		/// </summary>
+		public double CategoryOffset { get; private set; }
+		/// <summary>
+		/// The data value.
+		/// </summary>
+		public double Value { get; private set; }
+		public CategoryValueContext(Compositor cx, int cc, double oo, double vv, Axis_Extents ca, Axis_Extents va) {
+			Compositor = cx;
+			Category = cc;
+			CategoryOffset = oo;
+			Value = vv;
+			CategoryAxis = ca;
+			ValueAxis = va;
+		}
+	}
+	/// <summary>
+	/// Context for creating bars.
+	/// </summary>
+	public class ColumnElementContext : CategoryValueContext, IElementRectangleContext {
+		public ColumnElementContext(Compositor cx, int cc, double oo, double vv, double ww, double hh, Axis_Extents ca, Axis_Extents va) :base(cx, cc, oo, vv, ca, va) {
+			Width = ww;
+			Height = hh;
+		}
 		/// <summary>
 		/// <inheritdoc/>
 		/// </summary>
-		/// <param name="c"></param>
-		/// <param name="width"></param>
-		/// <param name="height"></param>
-		/// <param name="c1axis"></param>
-		/// <param name="c2axis"></param>
-		/// <returns></returns>
-		public CompositionSpriteShape CreateElement(Compositor c, double width, double height, AxisOrientation c1axis, AxisOrientation c2axis) {
-			var rectangle = c.CreateRoundedRectangleGeometry();
-			var sprite = c.CreateSpriteShape(rectangle);
-			sprite.IsStrokeNonScaling = IsStrokeNonScaling;
-			if(!double.IsNaN(CornerRadiusX) && !double.IsNaN(CornerRadiusY))	{
-				rectangle.CornerRadius = new Vector2((float)CornerRadiusX, (float)CornerRadiusY);
-			}
-			if (!double.IsNaN(StrokeThickness)) {
-				sprite.StrokeThickness = (float)StrokeThickness;
-			}
-			if (!double.IsNaN(StrokeMiterLimit)) {
-				sprite.StrokeMiterLimit = (float)StrokeMiterLimit;
-			}
-			sprite.StrokeStartCap = StrokeStartCap;
-			sprite.StrokeEndCap = StrokeEndCap;
-			if (FillBrush != null) {
-				sprite.FillBrush = FillBrush.CreateBrush(c);
-			}
-			if (StrokeBrush != null) {
-				sprite.StrokeBrush = StrokeBrush.CreateBrush(c);
-			}
-			// Offset and Size are Model units (input side of transform)
-			rectangle.Size = new Vector2((float)Math.Abs(width), (float)Math.Abs(height));
-			// Offset and Transform are managed by the caller
-			return sprite;
+		public double Width { get; private set; }
+		/// <summary>
+		/// <inheritdoc/>
+		/// </summary>
+		public double Height { get; private set; }
+	}
+	/// <summary>
+	/// Context for creating paths.
+	/// </summary>
+	public class PathGeometryContext : CategoryValueContext, IElementCompositionPath {
+		public PathGeometryContext(Compositor cx, int cc, double oo, double vv, Axis_Extents ca, Axis_Extents va, CompositionPath path) : base(cx, cc, oo, vv, ca, va) {
+			Path = path;
 		}
+		/// <summary>
+		/// <inheritdoc/>
+		/// </summary>
+		public CompositionPath Path { get; private set; }
+	}
+	/// <summary>
+	/// Ability to create composition elements for given series types.
+	/// </summary>
+	public interface IElementFactory {
+		/// <summary>
+		/// Create the sprite.
+		/// </summary>
+		/// <param name="iefc">Access to all.</param>
+		/// <returns>New instance.</returns>
+		CompositionShape CreateElement(IElementFactoryContext iefc);
 	}
 }

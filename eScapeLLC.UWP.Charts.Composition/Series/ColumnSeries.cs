@@ -24,8 +24,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Item state.
 		/// </summary>
-		public class Series_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
-			public Series_ItemState(int index, double categoryOffset, double value, CompositionSpriteShape css) : base(index, categoryOffset, value, css) {
+		public class Series_ItemState : ItemState_CategoryValue<CompositionShape> {
+			public Series_ItemState(int index, double categoryOffset, double value, CompositionShape css) : base(index, categoryOffset, value, css) {
 			}
 		}
 		/// <summary>
@@ -63,7 +63,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// How to create the elements for this series.
 		/// </summary>
-		public IColumnElementFactory ElementFactory { get; set; }
+		public IElementFactory ElementFactory { get; set; }
 		#endregion
 		#region internal
 		protected IChartCompositionLayer Layer { get; set; }
@@ -108,7 +108,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					return;
 				}
 				var (xx, yy) = MappingSupport.MapComponents(BarWidth, Math.Abs(value_val.Value), CategoryAxis.Orientation, ValueAxis.Orientation);
-				var element = ElementFactory.CreateElement(state.container.Compositor, xx, yy, CategoryAxis.Orientation, ValueAxis.Orientation);
+				var ctx = new ColumnElementContext(state.container.Compositor, index, BarOffset, value_val.Value, xx, yy, CategoryAxis, ValueAxis);
+				var element = ElementFactory.CreateElement(ctx);
 				element.Comment = $"{Name}[{index}]";
 				var istate = new Series_ItemState(index, BarOffset, value_val.Value, element);
 				var offset = istate.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);

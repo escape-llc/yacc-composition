@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Xml.Linq;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Shapes;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region item states
@@ -79,7 +77,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
 	/// <typeparam name="C">Composition shape element type.</typeparam>
-	public class ItemState_CategoryValue<C> : ItemStateC2 where C: CompositionShape {
+	public class ItemState_CategoryValue<C> : ItemStateC2 where C: CompositionObject {
 		public readonly C Element;
 		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element) : base(index, c2) {
 			CategoryOffset = categoryOffset;
@@ -210,6 +208,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region RenderState_ShapeContainer<SIS>
 	/// <summary>
 	/// Render state with a <see cref="CompositionContainerShape"/> to hold the elements.
+	/// Container element SHOULD hold the P matrix, and its children the M matrix.
 	/// </summary>
 	/// <typeparam name="SIS">State item class.</typeparam>
 	public class RenderState_ShapeContainer<SIS> : RenderStateCore<SIS> where SIS: ItemStateCore {
@@ -219,6 +218,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			container = compositor.CreateContainerShape();
 			container.Comment = $"container_{typeof(SIS).Name}";
 		}
+		/// <summary>
+		/// Add to the state.
+		/// </summary>
+		/// <param name="istate">Item state.</param>
+		/// <param name="element">Corresponding composition element; MAY be NULL.</param>
 		public void Add(ItemStateCore istate, CompositionShape element) {
 			if (element != null) {
 				container.Shapes.Add(element);

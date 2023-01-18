@@ -9,7 +9,10 @@
 	mc:Ignorable="d"
 	Background="Orange">
 	<Page.Resources>
-		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" IsStrokeNonScaling="True" StrokeThickness="2" CornerRadiusX="0.05" CornerRadiusY="0.05">
+		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
+			<yacc:ColumnElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
+			</yacc:ColumnElementFactory_Default.Stroke>
 			<yacc:ColumnElementFactory_Default.FillBrush>
 				<yacc:Brush_Color Color="Red"/>
 			</yacc:ColumnElementFactory_Default.FillBrush>
@@ -17,7 +20,10 @@
 				<yacc:Brush_Color Color="Green"/>
 			</yacc:ColumnElementFactory_Default.StrokeBrush>
 		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column2Style" IsStrokeNonScaling="True" StrokeThickness="1.5" CornerRadiusX="0.05" CornerRadiusY="0.05">
+		<yacc:ColumnElementFactory_Default x:Key="Column2Style" CornerRadiusX="0.05" CornerRadiusY="0.05">
+			<yacc:ColumnElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1.5" />
+			</yacc:ColumnElementFactory_Default.Stroke>
 			<yacc:ColumnElementFactory_Default.FillBrush>
 				<yacc:Brush_RadialGradient>
 					<yacc:Brush_RadialGradient.ColorStops>
@@ -30,7 +36,10 @@
 				<yacc:Brush_Color Color="CornflowerBlue"/>
 			</yacc:ColumnElementFactory_Default.StrokeBrush>
 		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column3Style" IsStrokeNonScaling="True" StrokeThickness="2" CornerRadiusX="0" CornerRadiusY="0">
+		<yacc:ColumnElementFactory_Default x:Key="Column3Style" CornerRadiusX="0" CornerRadiusY="0">
+			<yacc:ColumnElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
+			</yacc:ColumnElementFactory_Default.Stroke>
 			<yacc:ColumnElementFactory_Default.FillBrush>
 				<yacc:Brush_Color Color="LimeGreen"/>
 			</yacc:ColumnElementFactory_Default.FillBrush>
@@ -38,7 +47,10 @@
 				<yacc:Brush_Color Color="Blue"/>
 			</yacc:ColumnElementFactory_Default.StrokeBrush>
 		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column4Style" IsStrokeNonScaling="True" StrokeThickness="1" CornerRadiusX="0.025" CornerRadiusY="0.025">
+		<yacc:ColumnElementFactory_Default x:Key="Column4Style" CornerRadiusX="0.025" CornerRadiusY="0.025" FlipGradients="True">
+			<yacc:ColumnElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1" />
+			</yacc:ColumnElementFactory_Default.Stroke>
 			<yacc:ColumnElementFactory_Default.FillBrush>
 				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
 					<yacc:Brush_LinearGradient.ColorStops>
@@ -57,6 +69,14 @@
 				</yacc:Brush_LinearGradient>
 			</yacc:ColumnElementFactory_Default.StrokeBrush>
 		</yacc:ColumnElementFactory_Default>
+		<yacc:LineElementFactory_Default x:Key="Line1Style">
+			<yacc:LineElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
+			</yacc:LineElementFactory_Default.Stroke>
+			<yacc:LineElementFactory_Default.StrokeBrush>
+				<yacc:Brush_Color Color="GreenYellow"/>
+			</yacc:LineElementFactory_Default.StrokeBrush>
+		</yacc:LineElementFactory_Default>
 	</Page.Resources>
 	<yacc:Chart HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError">
 		<yacc:Chart.DataSources>
@@ -76,7 +96,7 @@
 			<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}"
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
 				BarWidth=".24" BarOffset=".75" />
-			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2"
+			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value2"
 				LineOffset=".5" />
 			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />

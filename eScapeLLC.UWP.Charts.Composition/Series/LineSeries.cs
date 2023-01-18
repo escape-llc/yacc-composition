@@ -22,6 +22,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		class Series_RenderState : RenderState_ShapeContainer<Series_ItemState> {
 			internal readonly EventBus bus;
+			// appears to not work when AnyCPU is used
 			internal readonly CanvasPathBuilder Builder = new CanvasPathBuilder(new CanvasDevice());
 			internal Series_RenderState(List<ItemStateCore> state, EventBus bus) : base(state) {
 				this.bus = bus;
@@ -38,6 +39,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region properties
 		public double LineOffset { get; set; }
+		/// <summary>
+		/// How to create the elements for this series.
+		/// </summary>
+		public IElementFactory ElementFactory { get; set; }
 		#endregion
 		#region internal
 		protected IChartCompositionLayer Layer { get; set; }
@@ -153,7 +158,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					return;
 				}
 				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, value_val.Value, CategoryAxis.Orientation, ValueAxis.Orientation);
-				//var element = ElementFactory.CreateElement(state.container.Compositor, xx, yy, CategoryAxis.Orientation, ValueAxis.Orientation);
 				var pt = new Vector2((float)xx, (float)yy);
 				if (index == 0) {
 					state.Builder.BeginFigure(pt);
@@ -178,18 +182,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			state.bus.Consume(msgvx);
 		}
 		void IDataSourceRenderSession<Series_RenderState>.Postamble(Series_RenderState state) {
+			if (ElementFactory == null) return;
 			var geom = CanvasGeometry.CreatePath(state.Builder);
 			var path = new CompositionPath(geom);
-			var pathgeom = state.compositor.CreatePathGeometry(path);
-			var shape = state.compositor.CreateSpriteShape(pathgeom);
-			// TODO style via factory
-			shape.StrokeBrush = state.compositor.CreateColorBrush(Colors.GreenYellow);
-			shape.StrokeThickness = 5;
-			shape.IsStrokeNonScaling = true;
-			shape.StrokeLineJoin = CompositionStrokeLineJoin.Round;
-			shape.StrokeStartCap = CompositionStrokeCap.Round;
-			shape.StrokeEndCap = CompositionStrokeCap.Round;
-
+			var ctx = new PathGeometryContext(state.compositor, state.itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
+			var shape = ElementFactory.CreateElement(ctx);
 			shape.Comment = $"{Name}";
 			state.container.Shapes.Add(shape);
 			state.Builder.Dispose();
