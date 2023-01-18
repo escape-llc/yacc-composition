@@ -34,15 +34,14 @@ namespace eScapeLLC.UWP.Charts {
 		/// Ctor.
 		/// Initializes <see cref="_unused"/> with items.
 		/// </summary>
-		/// <param name="source">Initial list to reuse; MAY be empty.</param>
+		/// <param name="source">Initial list to reuse; MAY be NULL or empty.</param>
 		protected RecyclerBase(IEnumerable<T> source) {
-			if (source == null) throw new ArgumentNullException(nameof(source));
-			_unused.AddRange(source);
+			if (source != null) _unused.AddRange(source);
 		}
 		#endregion
 	}
 	#endregion
-	#region Recycler2<T, S>
+	#region Recycler<T, S>
 	/// <summary>
 	/// Recycler that uses a factory method to produce instances.
 	/// The <see cref="_factory"/> can receive a state parameter per call to <see cref="Next"/>.
@@ -51,7 +50,6 @@ namespace eScapeLLC.UWP.Charts {
 	/// <typeparam name="S">Factory state type.</typeparam>
 	public class Recycler<T, S> : RecyclerBase<T> {
 		#region data
-		readonly IEnumerator<T> _source;
 		readonly Func<S, T> _factory;
 		#endregion
 		#region ctor
@@ -61,12 +59,7 @@ namespace eScapeLLC.UWP.Charts {
 		/// <param name="source">Initial list to reuse; MAY be empty.</param>
 		/// <param name="factory">Used to create new instances when SOURCE runs out.</param>
 		public Recycler(IEnumerable<T> source, Func<S, T> factory) : base(source) {
-			if (source == null) throw new ArgumentNullException(nameof(source));
-#pragma warning disable IDE0016 // Use 'throw' expression
-			if (factory == null) throw new ArgumentNullException(nameof(factory));
-#pragma warning restore IDE0016 // Use 'throw' expression
-			_source = source.GetEnumerator();
-			_factory = factory;
+			_factory = factory ?? throw new ArgumentNullException(nameof(factory));
 		}
 		/// <summary>
 		/// Ctor.
@@ -82,8 +75,8 @@ namespace eScapeLLC.UWP.Charts {
 		/// <param name="state">Some state the factory function can operate with.</param>
 		/// <returns>Item1: true=created, false=reused; Item2: Another instance.</returns>
 		public Tuple<bool, T> Next(S state) {
-			if (_source.MoveNext()) {
-				var tx = _source.Current;
+			if (_unused.Count > 0) {
+				var tx = _unused[0];
 				_unused.Remove(tx);
 				return new Tuple<bool, T>(false, tx);
 			} else {

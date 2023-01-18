@@ -122,6 +122,7 @@
   <ItemGroup>
     <Compile Include="Axis\AxisCommon.cs" />
     <Compile Include="Axis\CategoryAxis.cs" />
+    <Compile Include="Axis\TickCalculator.cs" />
     <Compile Include="Axis\ValueAxis.cs" />
     <Compile Include="Chart\Chart.cs" />
     <Compile Include="Chart\ChartComponent.cs" />
@@ -142,6 +143,7 @@
     <Compile Include="Support\MappingSupport.cs" />
     <Compile Include="Support\MatrixSupport.cs" />
     <Compile Include="Support\Recycler.cs" />
+    <Compile Include="Support\ViewModels.cs" />
     <EmbeddedResource Include="Properties\eScape.Charts.UWP.Composition.rd.xml" />
   </ItemGroup>
   <ItemGroup>

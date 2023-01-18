@@ -5,6 +5,25 @@ using System;
 using Windows.Foundation;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region IAxisLabelSelectorContext
+	/// <summary>
+	/// Base context for axis label selector/formatter.
+	/// </summary>
+	public interface IAxisLabelSelectorContext {
+		/// <summary>
+		/// Current axis label index.
+		/// </summary>
+		int Index { get; }
+		/// <summary>
+		/// The axis presenting labels.
+		/// </summary>
+		IChartAxis Axis { get; }
+		/// <summary>
+		/// Axis rendering area in DC.
+		/// </summary>
+		Rect Area { get; }
+	}
+	#endregion
 	#region AxisCommon
 	public abstract class AxisCommon : ChartComponent {
 		static readonly LogTools.Flag _trace = LogTools.Add("AxisCommon", LogTools.Level.Error);
@@ -80,6 +99,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					Orientation = AxisOrientation.Horizontal;
 					break;
 			}
+		}
+		protected (Matrix3x2 model, Matrix3x2 proj) ProjectionFor(Rect area, bool reverse) {
+			switch (Side) {
+				case Side.Bottom:
+					return MatrixSupport.AxisBottom(area, Minimum, Maximum + 1, !reverse);
+				case Side.Left:
+					return MatrixSupport.AxisLeft(area, Minimum, Maximum + 1, !reverse);
+				case Side.Right:
+					return MatrixSupport.AxisRight(area, Minimum, Maximum + 1, !reverse);
+				case Side.Top:
+					return MatrixSupport.AxisTop(area, Minimum, Maximum + 1, !reverse);
+			}
+			throw new InvalidOperationException($"cannot determine projection for {Side}");
 		}
 	}
 	#endregion

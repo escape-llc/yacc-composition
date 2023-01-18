@@ -119,19 +119,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var tb = new TextBlock() { Text = text, HorizontalAlignment = HorizontalAlignment.Left, HorizontalTextAlignment = TextAlignment.Left };
 			return tb;
 		}
-		protected (Matrix3x2 model, Matrix3x2 proj) ProjectionFor(Rect area, bool reverse) {
-			switch (Side) {
-				case Side.Bottom:
-					return MatrixSupport.AxisBottom(area, Minimum, Maximum + 1, !reverse);
-				case Side.Left:
-					return MatrixSupport.AxisLeft(area, Minimum, Maximum + 1, !reverse);
-				case Side.Right:
-					return MatrixSupport.AxisRight(area, Minimum, Maximum + 1, !reverse);
-				case Side.Top:
-					return MatrixSupport.AxisTop(area, Minimum, Maximum + 1, !reverse);
-			}
-			throw new InvalidOperationException($"cannot determine projection for {Side}");
-		}
 		#endregion
 		#region IChartAxis deprecate add to event
 		double IChartAxis.For(double value) {

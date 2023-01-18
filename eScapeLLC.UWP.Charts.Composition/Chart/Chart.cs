@@ -308,7 +308,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				// we are sized; see if dimensions actually changed
 				if (sz.Width == 0 || sz.Height == 0) return;
 				if (CurrentLayout.IsSizeChanged(sz)) {
-					_trace.Verbose($"LayoutUpdated.trigger ({sz.Width}x{sz.Height})");
+					//_trace.Verbose($"LayoutUpdated.trigger ({sz.Width}x{sz.Height})");
 					var ls = new LayoutState() { Dimensions = sz, Layout = CurrentLayout.Layout };
 					try {
 						Refresh(ls);
@@ -405,7 +405,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="message"></param>
 		void Refresh(LayoutState ls) {
-			_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height}");
+			//_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height}");
 			if (ls.Dimensions.Width == 0 || ls.Dimensions.Height == 0) {
 				return;
 			}
