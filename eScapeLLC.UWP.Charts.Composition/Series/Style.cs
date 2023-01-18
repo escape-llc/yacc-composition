@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Windows.Foundation;
 using Windows.UI.Composition;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public abstract class Style_Brush {
 		public abstract CompositionBrush CreateBrush(Compositor c);
 	}

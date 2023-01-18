@@ -1,6 +1,6 @@
 ﻿using eScape.Core;
 using eScape.Host;
-using eScapeLLC.UWP.Composition.Charts.Events;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,7 +12,7 @@ using Windows.UI.Xaml.Controls;
 
 // The Templated Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234235
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	#region ChartDataSourceCollection
 	/// <summary>
 	/// This is to appease the XAML infrastruction which eschews generic classes as property type.
@@ -391,10 +391,10 @@ namespace eScapeLLC.UWP.Composition.Charts {
 		void TransformsLayout(LayoutState ls) {
 			ls.Type = RenderType.TransformsOnly;
 			ls.InitializeLayoutContext(Padding);
-			_trace.Verbose($"transforms-only starting {ls.LayoutRect}");
+			//_trace.Verbose($"transforms-only starting {ls.LayoutRect}");
 			//Phase_Layout(ls);
 			Bus.Consume(new Phase_Layout(ls.Layout));
-			_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
+			//_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
 			ls.Layout.FinalizeRects();
 			Bus.Consume(new Phase_LayoutComplete(ls));
 			//Phase_Transforms(ls);

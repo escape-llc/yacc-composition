@@ -3,7 +3,7 @@ using System.Numerics;
 using Windows.Foundation;
 using Windows.UI.Xaml.Media;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public static class MatrixSupport {
 		/// <summary>
 		/// Return the Quadrant for drawing the data area.

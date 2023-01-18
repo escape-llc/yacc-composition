@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public static class MappingSupport {
 		/// <summary>
 		/// Map components to their respective cartesian axes.

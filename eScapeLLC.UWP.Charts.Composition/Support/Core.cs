@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Windows.Foundation;
-using Windows.Security.Cryptography.Certificates;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	#region AxisOrientation
 	/// <summary>
 	/// Allowed axis orientations.

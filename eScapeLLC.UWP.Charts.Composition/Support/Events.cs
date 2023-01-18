@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using Windows.UI.Xaml.Controls;
 
-namespace eScapeLLC.UWP.Composition.Charts.Events {
+namespace eScapeLLC.UWP.Charts.Composition.Events {
 	public sealed class Phase_InitializeAxes {
 		readonly public EventBus Bus;
 		public Phase_InitializeAxes(EventBus eb) { Bus = eb; }

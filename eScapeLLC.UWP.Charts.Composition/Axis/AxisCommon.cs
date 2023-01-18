@@ -1,10 +1,10 @@
 ﻿using eScape.Core;
-using eScapeLLC.UWP.Composition.Charts.Events;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System.Numerics;
 using System;
 using Windows.Foundation;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	#region AxisCommon
 	public abstract class AxisCommon : ChartComponent {
 		static readonly LogTools.Flag _trace = LogTools.Add("AxisCommon", LogTools.Level.Error);

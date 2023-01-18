@@ -1,18 +1,14 @@
 ﻿using eScape.Core;
 using eScape.Host;
-using eScapeLLC.UWP.Composition.Charts.Events;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Numerics;
-using System.ServiceModel.Channels;
 using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Media;
-using static eScapeLLC.UWP.Composition.Charts.ColumnSeries;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon, IRequireEnterLeave, IChartAxis, IDataSourceRenderSession<CategoryAxis.CategoryAxis_RenderState>,
 		IConsumer<Series_Extents>,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_FinalizeAxes>, IConsumer<Phase_Layout>, IConsumer<DataSource_RenderStart>, IConsumer<Phase_RenderTransforms> {

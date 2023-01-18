@@ -1,13 +1,9 @@
 ﻿using eScape.Core;
 using eScape.Host;
-using eScapeLLC.UWP.Composition.Charts.Events;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public class ValueAxis : AxisCommon, IChartAxis, IRequireEnterLeave, IConsumer<Series_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_FinalizeAxes>, IConsumer<Phase_Layout> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region properties

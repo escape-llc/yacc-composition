@@ -1,18 +1,12 @@
-﻿using eScape.Host;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
 using System.Numerics;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
-using static eScapeLLC.UWP.Composition.Charts.ColumnSeries;
+using Windows.UI.Xaml.Shapes;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	#region item states
 	/// <summary>
 	/// Items are generically described as a "vector" of components, 1-based.
@@ -223,9 +217,12 @@ namespace eScapeLLC.UWP.Composition.Charts {
 		public readonly Compositor compositor = Window.Current.Compositor;
 		public RenderState_ShapeContainer(List<ItemStateCore> state) : base(state) {
 			container = compositor.CreateContainerShape();
+			container.Comment = $"container_{typeof(SIS).Name}";
 		}
 		public void Add(ItemStateCore istate, CompositionShape element) {
-			container.Shapes.Add(element);
+			if (element != null) {
+				container.Shapes.Add(element);
+			}
 			itemstate.Add(istate);
 		}
 	}

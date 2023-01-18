@@ -1,12 +1,12 @@
 ﻿using eScape.Core;
 using eScape.Host;
-using eScapeLLC.UWP.Composition.Charts.Events;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using Windows.UI.Xaml;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
 		static LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
 		#region DPs

@@ -1,13 +1,7 @@
 ﻿using eScape.Host;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Windows.UI.Xaml;
 
-namespace eScapeLLC.UWP.Composition.Charts {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public class ChartComponent : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
 		public bool Dirty { get; protected set; }
 		/// <summary>

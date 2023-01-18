@@ -1,7 +1,7 @@
 <ResourceDictionary
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:local="using:eScapeLLC.UWP.Composition.Charts">
+	xmlns:local="using:eScapeLLC.UWP.Charts.Composition">
 	<Style x:Key="AxisLabel_LEFT" TargetType="TextBlock">
 		<Setter Property="Foreground" Value="White"/>
 		<Setter Property="FontSize" Value="10"/>
