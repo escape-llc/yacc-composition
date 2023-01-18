@@ -96,6 +96,28 @@
 				<yacc:Brush_Color Color="GreenYellow"/>
 			</yacc:LineElementFactory_Default.StrokeBrush>
 		</yacc:LineElementFactory_Default>
+		<yacc:LineElementFactory_Default x:Key="Line2Style">
+			<yacc:LineElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
+			</yacc:LineElementFactory_Default.Stroke>
+			<yacc:LineElementFactory_Default.StrokeBrush>
+				<yacc:Brush_Color Color="DarkGoldenrod"/>
+			</yacc:LineElementFactory_Default.StrokeBrush>
+		</yacc:LineElementFactory_Default>
+		<yacc:LineElementFactory_Default x:Key="Line3Style">
+			<yacc:LineElementFactory_Default.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
+			</yacc:LineElementFactory_Default.Stroke>
+			<yacc:LineElementFactory_Default.StrokeBrush>
+				<yacc:Brush_LinearGradient StartPoint="0,.5" EndPoint="1,.5">
+					<yacc:Brush_LinearGradient.ColorStops>
+						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
+						<yacc:Brush_GradientColorStop Offset="0.5" Color="Green"/>
+						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
+					</yacc:Brush_LinearGradient.ColorStops>
+				</yacc:Brush_LinearGradient>
+			</yacc:LineElementFactory_Default.StrokeBrush>
+		</yacc:LineElementFactory_Default>
 	</Page.Resources>
 	<yacc:Chart HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError">
 		<yacc:Chart.DataSources>
@@ -116,12 +138,18 @@
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
 				BarWidth=".24" BarOffset=".75" />
 			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
+				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value3"
+				LineOffset="0" />
+			<yacc:LineSeries Name="LineSeries2" DataSourceName="Source2" ElementFactory="{StaticResource Line2Style}"
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value2"
 				LineOffset=".5" />
+			<yacc:LineSeries Name="LineSeries3" DataSourceName="Source2" ElementFactory="{StaticResource Line3Style}"
+				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value1"
+				LineOffset="1" />
 			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
-			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
-			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
-			<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
+			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
+			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" AxisMargin="0" LimitMaximum="40" LimitMinimum="-40" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
+			<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="0" LimitMaximum="40" LimitMinimum="-40" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
 		</yacc:Chart.Components>
 	</yacc:Chart>
 </Page>
