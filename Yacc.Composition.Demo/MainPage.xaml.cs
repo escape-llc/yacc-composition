@@ -38,7 +38,7 @@ namespace Yacc.Composition.Demo {
 			Items2.Add(new Observation { Index = 4, Value1 = -16, Value2 = -20, Value3 = -40 });
 		}
 
-		private void Chart_ChartError(eScapeLLC.UWP.Composition.Charts.Chart sender, eScapeLLC.UWP.Composition.Charts.ChartErrorEventArgs args) {
+		private void Chart_ChartError(eScapeLLC.UWP.Charts.Composition.Chart sender, eScapeLLC.UWP.Charts.Composition.ChartErrorEventArgs args) {
 			var errors = args.Results.Select(x => x.ErrorMessage).ToArray();
 			var emsg = string.Join("\t", errors);
 			_trace.Error($"**ChartError {emsg}");

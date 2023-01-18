@@ -11,7 +11,7 @@
 		"HorizontalBand": "Error",
 		"HorizontalRule": "Error",
 		"ImageSourceMarkerSeries": "Verbose",
-		"LineSeries": "Error",
+		"LineSeries": "Verbose",
 		"MarkerSeries": "Error",
 		"PieSeries": "Error",
 		"StackedColumnSeries": "Error",

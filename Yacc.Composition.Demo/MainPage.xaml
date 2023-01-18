@@ -3,7 +3,7 @@
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:local="using:Yacc.Composition.Demo"
-	xmlns:yacc="using:eScapeLLC.UWP.Composition.Charts"
+	xmlns:yacc="using:eScapeLLC.UWP.Charts.Composition"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	mc:Ignorable="d"
@@ -76,6 +76,9 @@
 			<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}"
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
 				BarWidth=".24" BarOffset=".75" />
+			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2"
+				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value2"
+				LineOffset=".5" />
 			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" />
