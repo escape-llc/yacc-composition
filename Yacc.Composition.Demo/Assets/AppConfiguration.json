@@ -1,8 +1,8 @@
 ﻿{
 	"TraceSwitches": {
-		"AxisCommon": "Error",
+		"AxisCommon": "Verbose",
 		"CandlestickSeries": "Error",
-		"CategoryAxis": "Error",
+		"CategoryAxis": "Verbose",
 		"Chart": "Verbose",
 		"ColumnSeries": "Verbose",
 		"DataSeries": "Error",
@@ -15,7 +15,7 @@
 		"MarkerSeries": "Error",
 		"PieSeries": "Error",
 		"StackedColumnSeries": "Error",
-		"ValueAxis": "Error",
+		"ValueAxis": "Verbose",
 		"ValueAxisGrid": "Error",
 		"ValueLabels": "Error"
 	}

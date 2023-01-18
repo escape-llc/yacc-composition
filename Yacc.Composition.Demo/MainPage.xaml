@@ -9,6 +9,25 @@
 	mc:Ignorable="d"
 	Background="Orange">
 	<Page.Resources>
+		<Style x:Key="ValueAxisLabel" TargetType="TextBlock">
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="FontStyle" Value="Italic"/>
+			<Setter Property="FontSize" Value="12"/>
+			<Setter Property="TextAlignment" Value="Right"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="HorizontalAlignment" Value="Right"/>
+		</Style>
+		<Style x:Key="ValueAxisLabel_Right" TargetType="TextBlock">
+			<Setter Property="Foreground" Value="Yellow"/>
+			<Setter Property="FontStyle" Value="Italic"/>
+			<Setter Property="FontSize" Value="12"/>
+			<Setter Property="TextAlignment" Value="Left"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="HorizontalAlignment" Value="Left"/>
+		</Style>
+		<DataTemplate x:Key="TextBlock">
+			<TextBlock Text="{Binding Text}"/>
+		</DataTemplate>
 		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
 			<yacc:ColumnElementFactory_Default.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
@@ -97,12 +116,12 @@
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
 				BarWidth=".24" BarOffset=".75" />
 			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
-				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value2"
+				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value2"
 				LineOffset=".5" />
 			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
-			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" />
-			<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" />
+			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
+			<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
 		</yacc:Chart.Components>
 	</yacc:Chart>
 </Page>
