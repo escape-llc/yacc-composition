@@ -113,8 +113,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				return null;
 			}
 		}
-		class AxisState_Horizontal : Axis_State {
-			internal AxisState_Horizontal(FrameworkElement element, TickState tick) : base(tick.Index, element, tick) { }
+		class AxisState_Vertical : Axis_State {
+			internal AxisState_Vertical(FrameworkElement element, TickState tick) : base(tick.Index, element, tick) { }
 			protected override Point GetLocation(FrameworkElement element) {
 				return new Point(xorigin, yorigin - element.ActualHeight / 2);
 			}
@@ -122,8 +122,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				element.Width = dim;
 			}
 		}
-		class AxisState_Vertical : Axis_State {
-			internal AxisState_Vertical(FrameworkElement element, TickState tick) : base(tick.Index, element, tick) { }
+		class AxisState_Horizontal : Axis_State {
+			internal AxisState_Horizontal(FrameworkElement element, TickState tick) : base(tick.Index, element, tick) { }
 			protected override Point GetLocation(FrameworkElement element) {
 				return new Point(xorigin - element.ActualWidth / 2, yorigin);
 			}
@@ -219,13 +219,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			message.Bus.Consume(msg);
 		}
 		public void Consume(Phase_Layout message) {
-			var space = AxisMargin + /*AxisLineThickness + */ MinWidth;
+			var space = AxisMargin + MinWidth;
 			message.Context.ClaimSpace(this, Side, space);
 		}
 		public void Consume(Phase_RenderAxes message) {
 			if(double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var icrc = message.ContextFor(this);
-			var padding = /*AxisLineThickness + */ 2 * AxisMargin;
+			var padding = 2 * AxisMargin;
 			var recycler = new Recycler<FrameworkElement, Axis_State>(AxisLabels.Cast<Axis_State>().Where(xx => xx.Element != null).Select(xx => xx.Element), state => {
 				var fe = ElementFactory(state);
 				if (Orientation == AxisOrientation.Vertical) {
@@ -243,10 +243,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				return fe;
 			});
 			var tc = new TickCalculator(Minimum, Maximum);
-			_trace.Verbose($"grid range:{tc.Range} tintv:{tc.TickInterval}");
+			_trace.Verbose($"{Name} grid range:{tc.Range} tintv:{tc.TickInterval}");
 			var itemstate = new List<ItemStateCore>();
 			// materialize the ticks
-			var tix = tc.GetTicks().OrderBy(x => x.Index).ToArray();
+			var tix = tc.GetTicks().OrderBy(xx => xx.Index).ToArray();
 			var sc = new ValueAxisSelectorContext(this, icrc.Area, tix, tc.TickInterval);
 			for (int ix = 0; ix < tix.Length; ix++) {
 				//_trace.Verbose($"grid vx:{tick}");
@@ -263,12 +263,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					}
 				}
 				if (!createit) continue;
-				var current = recycler.Next(null);
+				var (created, element) = recycler.Next(null);
 				var tick = tix[ix];
-				if (!current.Item1) {
+				if (!created) {
 					// restore binding if we are using a LabelFormatter
 					if (LabelFormatter != null && LabelStyle != null) {
-						BindTo(this, nameof(LabelStyle), current.Item2, FrameworkElement.StyleProperty);
+						BindTo(this, nameof(LabelStyle), element, FrameworkElement.StyleProperty);
 					}
 				}
 				// default text
@@ -278,7 +278,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					var format = LabelFormatter.Convert(sc, typeof(Tuple<Style, string>), null, System.Globalization.CultureInfo.CurrentUICulture.Name);
 					if (format is Tuple<Style, string> ovx) {
 						if (ovx.Item1 != null) {
-							current.Item2.Style = ovx.Item1;
+							element.Style = ovx.Item1;
 						}
 						if (ovx.Item2 != null) {
 							text = ovx.Item2;
@@ -286,11 +286,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					}
 				}
 				var shim = new TextShim() { Text = text };
-				current.Item2.DataContext = shim;
-				BindTo(shim, nameof(Visibility), current.Item2, UIElement.VisibilityProperty);
-				var state = (Orientation == AxisOrientation.Vertical
-					? new AxisState_Vertical(current.Item2, tick) as ItemStateCore
-					: new AxisState_Horizontal(current.Item2, tick) as ItemStateCore);
+				element.DataContext = shim;
+				BindTo(shim, nameof(Visibility), element, UIElement.VisibilityProperty);
+				var state = (Orientation == AxisOrientation.Horizontal
+					? new AxisState_Horizontal(element, tick) as ItemStateCore
+					: new AxisState_Vertical(element, tick) as ItemStateCore);
 				sc.Generated(tick);
 				itemstate.Add(state);
 			}
@@ -312,6 +312,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				fe = LabelTemplate.LoadContent() as FrameworkElement;
 			}
 			else {
+				// TODO bring back default template stuff
 				fe = new TextBlock();
 			}
 			if (LabelStyle != null) {
@@ -333,7 +334,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Verbose($"{Name} sizeChanged[{state.Tick.Index}] loc:{loc} yv:{state.Tick.Value} o:({state.xorigin},{state.yorigin}) ns:{e.NewSize} ds:{fe.DesiredSize}");
 			}
 		}
-
 		public void Consume(Phase_RenderTransforms message) {
 			if (AxisLabels.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
@@ -341,26 +341,25 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var scale = Orientation == AxisOrientation.Horizontal ? icrc.Area.Width / Range : icrc.Area.Height / Range;
 			var pmatrix = ProjectionFor(icrc.Area, Reverse);
 			var matx = Matrix3x2.Multiply(pmatrix.model, pmatrix.proj);
-			//AxisGeometry.Transform = new MatrixTransform() { Matrix = matx };
-			_trace.Verbose($"transforms s:{scale:F3} matx:{matx} a:{icrc.Area} sa:{icrc.SeriesArea}");
+			_trace.Verbose($"{Name} transforms s:{scale:F3} matx:{matx} a:{icrc.Area} sa:{icrc.SeriesArea}");
 			foreach (Axis_State state in AxisLabels) {
 				if (state.Element == null) continue;
 				var point = Orientation == AxisOrientation.Horizontal ? new Vector2((float)state.Tick.Value, 0) : new Vector2(0, (float)state.Tick.Value);
 				var dc = Vector2.Transform(point, matx);
-				switch (state) {
-					case AxisState_Vertical isv:
-						isv.dim = icrc.Area.Width - AxisMargin;
-						isv.xorigin = icrc.Area.Left;
-						isv.yorigin = dc.Y;
+				switch (Orientation) {
+					case AxisOrientation.Vertical:
+						state.dim = icrc.Area.Width - AxisMargin;
+						state.xorigin = icrc.Area.Left;
+						state.yorigin = dc.Y;
 						break;
-					case AxisState_Horizontal ish:
-						ish.dim = icrc.Area.Height - AxisMargin;
-						ish.xorigin = dc.X;
-						ish.yorigin = icrc.Area.Top + AxisMargin;
+					case AxisOrientation.Horizontal:
+						state.dim = icrc.Area.Height - AxisMargin;
+						state.xorigin = dc.X;
+						state.yorigin = icrc.Area.Top + AxisMargin;
 						break;
 				}
 				var loc = state.UpdateLocation();
-				_trace.Verbose($"{Name} el {state.Element.ActualWidth}x{state.Element.ActualHeight} v:{state.Tick.Value} @:({loc?.X},{loc?.Y})");
+				//_trace.Verbose($"{Name} el {state.Element.ActualWidth}x{state.Element.ActualHeight} v:{state.Tick.Value} @:({loc?.X},{loc?.Y})");
 				if (icrc.Type != RenderType.TransformsOnly) {
 					// doing render so (try to) trigger the SizeChanged handler
 					state.Element.InvalidateMeasure();

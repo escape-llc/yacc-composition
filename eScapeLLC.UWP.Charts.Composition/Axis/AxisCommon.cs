@@ -72,6 +72,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		protected void Extents(Series_Extents message) {
 			bool did = false;
+			double xmin = Minimum, xmax = Maximum;
 			if (!double.IsNaN(message.Minimum)) {
 				if (double.IsNaN(LimitMinimum) && (double.IsNaN(Minimum) || message.Minimum < Minimum)) {
 					Minimum = message.Minimum;
@@ -84,6 +85,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					did = true;
 				}
 			}
+			_trace.Verbose($"{Name} extents did:{did} min:{xmin} max:{xmax} s:{message.SeriesName} smin:{message.Minimum}  smax:{message.Maximum}");
 			if (did) {
 				Dirty = true;
 			}

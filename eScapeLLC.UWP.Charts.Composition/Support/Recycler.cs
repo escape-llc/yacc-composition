@@ -74,15 +74,15 @@ namespace eScapeLLC.UWP.Charts {
 		/// </summary>
 		/// <param name="state">Some state the factory function can operate with.</param>
 		/// <returns>Item1: true=created, false=reused; Item2: Another instance.</returns>
-		public Tuple<bool, T> Next(S state) {
+		public (bool created, T element) Next(S state) {
 			if (_unused.Count > 0) {
 				var tx = _unused[0];
 				_unused.Remove(tx);
-				return new Tuple<bool, T>(false, tx);
+				return (false, tx);
 			} else {
 				var tx = _factory(state);
 				_created.Add(tx);
-				return new Tuple<bool, T>(true, tx);
+				return (true, tx);
 			}
 		}
 		#endregion

@@ -355,7 +355,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="ls">Layout state.</param>
 		void FullLayout(LayoutState ls) {
 			ls.Type = RenderType.Full;
-			var thk = new Thickness(Padding.Left + Margin.Left, Padding.Top + Margin.Top, Padding.Right + Margin.Right, Padding.Bottom + Margin.Bottom);
 			ls.InitializeLayoutContext(Padding);
 			_trace.Verbose($"full starting {ls.LayoutRect}");
 			// Phase I: reset axes
@@ -372,11 +371,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				ds.Render(Bus, ddsrc);
 			}
 			// axes receive extents from series broadcast on the EB
-			//Phase_AxisLimits(ValueExtents_DataSeries.Items);
 			// Phase IV: render non-axis components (IRequireRender)
 			Bus.Consume(new Phase_RenderComponents(ls, Surface, Components, DataContext));
-			// TODO axes receive extents from decorations broadcast on the EB
-			//Phase_AxisLimits(ValueExtents_NotDataSeries.Items);
+			// axes receive extents from decorations broadcast on the EB
 			// Phase V: axes finalized
 			//Phase_AxesFinalized(ls);
 			// Phase VI: post-axes finalized

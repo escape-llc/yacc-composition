@@ -57,6 +57,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region handlers
 		public void Consume(DataSource_RenderStart message) {
+			if (ElementFactory == null) return;
 			if (message.Name != DataSourceName) return;
 			if (message.ExpectedItemType == null) return;
 			ValueBinding = Binding.For(message.ExpectedItemType, ValueMemberName);
@@ -113,7 +114,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum + 1);
 			}
 			Layer.Use(sv => {
-				if(sv.Shapes[0] is CompositionContainerShape ccs) {
+				if(sv.Shapes.Count > 0 && sv.Shapes[0] is CompositionContainerShape ccs) {
 					foreach (var shx in ccs.Shapes) shx.TransformMatrix = Model;
 				}
 			});
@@ -148,7 +149,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Model = Matrix3x2.Identity;
 		}
 		void IDataSourceRenderSession<Series_RenderState>.Render(Series_RenderState state, int index, object item) {
-			//if (ElementFactory == null) return;
 			if (ValueBinding == null) return;
 			// safe to conduct business
 			if (ValueBinding.GetDouble(item, out double? value_val)) {
@@ -166,9 +166,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					state.Builder.AddLine(pt);
 				}
 				var istate = new Series_ItemState(index, LineOffset, value_val.Value, null);
-				var offset = istate.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
-				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2} offset:{offset.X},{offset.Y}");
-				//element.Offset = offset;
+				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
 				state.Add(istate, null);
 				UpdateLimits(index, value_val.Value, 0);
 			}
@@ -182,7 +180,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			state.bus.Consume(msgvx);
 		}
 		void IDataSourceRenderSession<Series_RenderState>.Postamble(Series_RenderState state) {
-			if (ElementFactory == null) return;
 			var geom = CanvasGeometry.CreatePath(state.Builder);
 			var path = new CompositionPath(geom);
 			var ctx = new PathGeometryContext(state.compositor, state.itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
