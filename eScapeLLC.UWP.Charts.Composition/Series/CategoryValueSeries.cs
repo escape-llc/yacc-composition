@@ -1,9 +1,10 @@
-﻿using eScapeLLC.UWP.Charts.Composition.Events;
+﻿using eScape.Host;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System.Collections.Generic;
 using System.Numerics;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public abstract class CategoryValueSeries : ChartComponent {
+	public abstract class CategoryValueSeries : ChartComponent, IConsumer<Component_RenderExtents> {
 		#region properties
 		/// <summary>
 		/// MUST match the name of a data source.
@@ -119,6 +120,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (string.IsNullOrEmpty(ValueMemberName)) {
 				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ValueMemberName)}' was not set", new[] { nameof(ValueMemberName) }));
 			}
+		}
+		#endregion
+		#region handlers
+		/// <summary>
+		/// Respond with current series extents so axes can update.
+		/// </summary>
+		/// <param name="message"></param>
+		public void Consume(Component_RenderExtents message) {
+			if (message.Target != typeof(DataSource)) return;
+			message.Bus.Consume(new Series_Extents(Name, DataSourceName, CategoryAxisName, Component1Minimum, Component1Maximum));
+			message.Bus.Consume(new Series_Extents(Name, DataSourceName, ValueAxisName, Component2Minimum, Component2Maximum));
 		}
 		#endregion
 	}
