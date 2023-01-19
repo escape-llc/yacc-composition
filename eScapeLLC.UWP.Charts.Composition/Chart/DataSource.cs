@@ -7,7 +7,7 @@ using System.Collections.Specialized;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
+	public class DataSource : FrameworkElement, IRequireConsume, IConsumer<DataContextChangedEventArgs> {
 		static LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
 		#region DPs
 		/// <summary>
@@ -85,6 +85,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Used to validate bindings before any data traversal is performed.
 		/// </summary>
 		public Type ExpectedItemType { get; set; }
+		/// <summary>
+		/// Used for unsolicited messages.
+		/// </summary>
+		public IProvideConsume Bus { get; set; }
 		#endregion
 		#region helpers
 		/// <summary>
@@ -106,7 +110,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// ALSO use this if you are not using <see cref="ExternalRefresh"/> property.
 		/// </summary>
 		/// <param name="nccea">Type of change.</param>
-		public void Refresh(NotifyCollectionChangedEventArgs nccea) { Dirty(); /*RefreshRequest?.Invoke(this, nccea); */}
+		public void Refresh(NotifyCollectionChangedEventArgs nccea) {
+			Dirty();
+			Bus.Consume(new DataSource_RefreshRequest(Name, nccea));
+		}
 		public void Consume(DataContextChangedEventArgs args) {
 			if (DataContext != args.NewValue) {
 				DataContext = args.NewValue;
