@@ -11,7 +11,7 @@ using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class LineSeries : CategoryValueSeries, IRequireEnterLeave,
+	public class LineSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues,
 		IDataSourceRenderSession<LineSeries.Series_RenderState>,
 		IConsumer<Phase_RenderTransforms>, IConsumer<Axis_Extents>, IConsumer<DataSource_RenderStart> {
 		static LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
@@ -21,10 +21,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		class Series_RenderState : RenderState_ShapeContainer<Series_ItemState> {
-			internal readonly EventBus bus;
+			internal readonly IProvideConsume bus;
 			// appears to not work when AnyCPU is used
 			internal readonly CanvasPathBuilder Builder = new CanvasPathBuilder(new CanvasDevice());
-			internal Series_RenderState(List<ItemStateCore> state, EventBus bus) : base(state) {
+			internal Series_RenderState(List<ItemStateCore> state, IProvideConsume bus) : base(state) {
 				this.bus = bus;
 			}
 		}
@@ -43,6 +43,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// How to create the elements for this series.
 		/// </summary>
 		public IElementFactory ElementFactory { get; set; }
+		/// <summary>
+		/// Return current state as read-only.
+		/// </summary>
+		public IEnumerable<ISeriesItem> SeriesItemValues => ItemState.AsReadOnly();
 		#endregion
 		#region internal
 		protected IChartCompositionLayer Layer { get; set; }
@@ -180,13 +184,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			state.bus.Consume(msgvx);
 		}
 		void IDataSourceRenderSession<Series_RenderState>.Postamble(Series_RenderState state) {
-			var geom = CanvasGeometry.CreatePath(state.Builder);
-			var path = new CompositionPath(geom);
-			var ctx = new PathGeometryContext(state.compositor, state.itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
-			var shape = ElementFactory.CreateElement(ctx);
-			shape.Comment = $"{Name}";
-			state.container.Shapes.Add(shape);
-			state.Builder.Dispose();
+			using (state.Builder) {
+				var geom = CanvasGeometry.CreatePath(state.Builder);
+				var path = new CompositionPath(geom);
+				var ctx = new PathGeometryContext(state.compositor, state.itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
+				var shape = ElementFactory.CreateElement(ctx);
+				shape.Comment = $"{Name}";
+				state.container.Shapes.Add(shape);
+			}
 			// install elements
 			Layer.Use(sv => {
 				sv.Shapes.Clear();

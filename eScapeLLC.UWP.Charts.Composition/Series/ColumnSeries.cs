@@ -17,7 +17,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
-	public class ColumnSeries : CategoryValueSeries, IRequireEnterLeave, IDataSourceRenderSession<ColumnSeries.Series_RenderState>,
+	public class ColumnSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues,
+		IDataSourceRenderSession<ColumnSeries.Series_RenderState>,
 		IConsumer<Phase_RenderTransforms>, IConsumer<Axis_Extents>, IConsumer<DataSource_RenderStart> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
@@ -32,8 +33,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Render state.
 		/// </summary>
 		class Series_RenderState : RenderState_ShapeContainer<Series_ItemState> {
-			internal readonly EventBus bus;
-			internal Series_RenderState(List<ItemStateCore> state, EventBus bus) : base(state) {
+			internal readonly IProvideConsume bus;
+			internal Series_RenderState(List<ItemStateCore> state, IProvideConsume bus) : base(state) {
 				this.bus = bus;
 			}
 		}
@@ -64,6 +65,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// How to create the elements for this series.
 		/// </summary>
 		public IElementFactory ElementFactory { get; set; }
+		/// <summary>
+		/// Return current state as read-only.
+		/// </summary>
+		public IEnumerable<ISeriesItem> SeriesItemValues => ItemState.AsReadOnly();
 		#endregion
 		#region internal
 		protected IChartCompositionLayer Layer { get; set; }
