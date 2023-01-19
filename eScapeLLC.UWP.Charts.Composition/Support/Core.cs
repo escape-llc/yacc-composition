@@ -1,4 +1,5 @@
-﻿using System;
+﻿using eScape.Host;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Windows.Foundation;
@@ -327,16 +328,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <typeparam name="S">State type.</typeparam>
 	public interface IDataSourceRenderSession<S> {
 		/// <summary>
-		/// Return a state object that gets passed back on subsequent calls.
-		/// Includes limit initialization.
+		/// Prepare to render collection.
 		/// </summary>
+		/// <param name="state">Comes from render start.</param>
 		/// <param name="icrc">Render context.</param>
-		/// <returns>NULL: do not participate; !NULL: The state.</returns>
 		void Preamble(S state, IChartRenderContext icrc);
 		/// <summary>
 		/// Render the current item.
 		/// Includes limit updates.
 		/// </summary>
+		/// <param name="state">Comes from render start.</param>
 		/// <param name="index">Data index [0..N).</param>
 		/// <param name="item">Current item.</param>
 		void Render(S state, int index, object item);
@@ -345,12 +346,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Called after all items are processed, and before Postamble().
 		/// Not called if Preamble() returned NULL.
 		/// </summary>
+		/// <param name="state">Comes from render start.</param>
 		void RenderComplete(S state);
 		/// <summary>
 		/// Perform terminal actions.
 		/// Axis limits were finalized (in RenderComplete) and MAY be use in layout calculations.
 		/// Not called if Preamble() returned NULL.
 		/// </summary>
+		/// <param name="state">Comes from render start.</param>
 		void Postamble(S state);
 	}
 	/// <summary>
@@ -360,25 +363,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public class RenderSession<S> : IDataSourceRenderer {
 		readonly IDataSourceRenderSession<S> idsrs;
 		readonly S state;
-		internal RenderSession(IDataSourceRenderSession<S> idsrs, S state) {
+		/// <summary>
+		/// Ctor.
+		/// </summary>
+		/// <param name="idsrs">Host interface.</param>
+		/// <param name="state">State to use; passed to host interface.</param>
+		public RenderSession(IDataSourceRenderSession<S> idsrs, S state) {
 			this.idsrs = idsrs;
 			this.state = state;
 		}
-		void IDataSourceRenderer.Postamble() {
-			idsrs.Postamble(state);
-		}
-		void IDataSourceRenderer.Preamble(IChartRenderContext icrc) {
-			idsrs.Preamble(state, icrc);
-		}
-		void IDataSourceRenderer.Render(int index, object item) {
-			idsrs.Render(state, index, item);
-		}
-		void IDataSourceRenderer.RenderComplete() {
-			idsrs.RenderComplete(state);
-		}
+		void IDataSourceRenderer.Postamble() { idsrs.Postamble(state); }
+		void IDataSourceRenderer.Preamble(IChartRenderContext icrc) { idsrs.Preamble(state, icrc); }
+		void IDataSourceRenderer.Render(int index, object item) { idsrs.Render(state, index, item); }
+		void IDataSourceRenderer.RenderComplete() { idsrs.RenderComplete(state); }
 	}
-	#endregion
-	#region state
 	#endregion
 	#region IProvideValueExtents
 	/// <summary>
@@ -493,5 +491,84 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="icelc">The context.</param>
 		void Leave(IChartEnterLeaveContext icelc);
 	}
+	#endregion
+	#region IProvideComponentRender
+	/// <summary>
+	/// Direct channel to component for incremental component updates (not from the Bus).
+	/// </summary>
+	public interface IProvideComponentRender {
+		/// <summary>
+		/// Render component.
+		/// </summary>
+		/// <param name="icrc"></param>
+		void Render(IChartRenderContext icrc);
+		/// <summary>
+		/// Adjust transforms.
+		/// </summary>
+		/// <param name="icrc"></param>
+		void Transforms(IChartRenderContext icrc);
+	}
+	#endregion
+	#region IRequireConsume
+	/// <summary>
+	/// Component requires ability to send unsolicited messages.
+	/// IST: when a message has a <see cref="IProvideConsume"/>, receiver MUST use that instance.
+	/// </summary>
+	public interface IRequireConsume {
+		/// <summary>
+		/// Use for unsolicited messages.
+		/// </summary>
+		IProvideConsume Bus { get; set; }
+	}
+	#endregion
+	#region component update
+	/// <summary>
+	/// Refresh request type.
+	/// Indicates the relative "severity" of requested update.
+	/// MUST be honest!
+	/// </summary>
+	public enum RefreshRequestType {
+		/// <summary>
+		/// So very dirty...
+		/// Implies ValueDirty and TransformsDirty.
+		/// </summary>
+		LayoutDirty,
+		/// <summary>
+		/// A value that generates <see cref="Geometry"/> has changed.
+		/// Implies TransformsDirty.
+		/// </summary>
+		ValueDirty,
+		/// <summary>
+		/// Something that affects the transforms has changed.
+		/// </summary>
+		TransformsDirty
+	};
+	/// <summary>
+	/// Axis update information.
+	/// If the refresh request indicates axis extents are "intact" the refresh SHOULD be optimized.
+	/// MUST be honest!
+	/// </summary>
+	public enum AxisUpdateState {
+		/// <summary>
+		/// No axis updates required.
+		/// </summary>
+		None,
+		/// <summary>
+		/// Value axis update required.
+		/// </summary>
+		Value,
+		/// <summary>
+		/// Category axis update required.
+		/// </summary>
+		Category,
+		/// <summary>
+		/// Both axes update required.
+		/// </summary>
+		Both,
+		/// <summary>
+		/// Unknown or expensive to check; treat as "Both" or "risk it".
+		/// </summary>
+		Unknown
+	};
 	#endregion
 }
