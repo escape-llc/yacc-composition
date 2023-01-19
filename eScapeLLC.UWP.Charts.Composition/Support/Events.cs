@@ -1,10 +1,13 @@
 ﻿using eScape.Host;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using Windows.UI.Xaml.Controls;
 
 namespace eScapeLLC.UWP.Charts.Composition.Events {
+	#region render pipeline events
 	/// <summary>
 	/// Instruct axis components to initialize.
 	/// </summary>
@@ -12,8 +15,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// <summary>
 		/// Use to send <see cref="Axis_Extents"/> events.
 		/// </summary>
-		readonly public EventBus Bus;
-		public Phase_InitializeAxes(EventBus eb) { Bus = eb; }
+		readonly public IProvideConsume Bus;
+		public Phase_InitializeAxes(IProvideConsume eb) { Bus = eb; }
 	}
 	/// <summary>
 	/// Instruct components to claim space.  Components using the Series Area MUST NOT claim space.
@@ -47,8 +50,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// <summary>
 		/// Use to send <see cref="Axis_Extents"/> events.
 		/// </summary>
-		readonly public EventBus Bus;
-		public Phase_FinalizeAxes(LayoutState ls, EventBus eb) : base(ls) { Bus = eb; }
+		readonly public IProvideConsume Bus;
+		public Phase_FinalizeAxes(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
 	}
 	/// <summary>
 	/// Core for phases with render context.
@@ -74,7 +77,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public Phase_RenderComponents(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) :base(ls, surface, components, dataContext) {}
 	}
 	/// <summary>
-	/// Instruct axis components to render.
+	/// Instruct axis components to render (after limits are established).
 	/// </summary>
 	public sealed class Phase_RenderAxes : PhaseWithRenderContext {
 		public Phase_RenderAxes(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
@@ -85,6 +88,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	public sealed class Phase_RenderTransforms : PhaseWithRenderContext {
 		public Phase_RenderTransforms(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
 	}
+	#endregion
+	#region Series events
 	/// <summary>
 	/// Send on EB when a series has update to its extents.
 	/// </summary>
@@ -111,6 +116,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 			Maximum = maximum;
 		}
 	}
+	#endregion
+	#region Axis events
 	/// <summary>
 	/// Send on EB when an axis has update to its extents.
 	/// </summary>
@@ -137,7 +144,52 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
 	}
-	public sealed class DataSource_RefreshRequest { }
+	#endregion
+	#region Component events
+	/// <summary>
+	/// Instruct components to broadcast their current extents.
+	/// Used during component-only render.
+	/// </summary>
+	public sealed class Component_RenderExtents {
+		/// <summary>
+		/// Use to send <see cref="Series_Extents"/> message(s).
+		/// </summary>
+		public readonly IProvideConsume Bus;
+		/// <summary>
+		/// Indicates what type of component SHOULD respond to this message.
+		/// </summary>
+		public readonly Type Target;
+		public Component_RenderExtents(Type target, IProvideConsume bus) {
+			Target = target;
+			Bus = bus;
+		}
+	}
+	/// <summary>
+	/// Specific component is requesting refresh; triggers abbreviated render cycle.
+	/// </summary>
+	public sealed class Component_RefreshRequest {
+		public readonly ChartComponent Component;
+		public readonly RefreshRequestType Type;
+		public readonly AxisUpdateState Axis;
+		public Component_RefreshRequest(ChartComponent component, RefreshRequestType rrt, AxisUpdateState aus) {
+			Component = component;
+			this.Type = rrt;
+			this.Axis = aus;
+		}
+	}
+	#endregion
+	#region DataSource events
+	/// <summary>
+	/// External source is requesting a refresh on the data source, e.g. it modified a non-notifying collection like <see cref="IList{T}"/>.
+	/// </summary>
+	public sealed class DataSource_RefreshRequest {
+		public readonly string Name;
+		public readonly NotifyCollectionChangedEventArgs Args;
+		public DataSource_RefreshRequest(string name, NotifyCollectionChangedEventArgs args) {
+			Name = name;
+			Args = args;
+		}
+	}
 	/// <summary>
 	/// Advertise start of Data Source Render Pipeline (DSRP).
 	/// Interested parties MUST call <see cref="Register(IDataSourceRenderer)"/> to participate.
@@ -155,7 +207,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// <summary>
 		/// Use for messaging.  MAY retain a reference.
 		/// </summary>
-		readonly public EventBus Bus;
+		readonly public IProvideConsume Bus;
 		/// <summary>
 		/// Ctor.
 		/// </summary>
@@ -163,7 +215,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// <param name="type">Expected item type.</param>
 		/// <param name="states">Accumulate registrations.</param>
 		/// <param name="bus">Use for messaging.</param>
-		public DataSource_RenderStart(string name, Type type, List<IDataSourceRenderer> states, EventBus bus) {
+		public DataSource_RenderStart(string name, Type type, List<IDataSourceRenderer> states, IProvideConsume bus) {
 			Name = name;
 			ExpectedItemType = type;
 			this.states = states;
@@ -183,4 +235,27 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public readonly string Name;
 		public DataSource_RenderEnd(string name) { Name = name; }
 	}
+	/// <summary>
+	/// Data Source notifying of an incremental update, e.g. element added/removed.
+	/// Receiver SHOULD make the parallel update to visuals.
+	/// IST: underlying collection was already modified!
+	/// </summary>
+	public sealed class DataSource_IncrementalUpdate : PhaseWithRenderContext {
+		public readonly string Name;
+		public readonly NotifyCollectionChangedAction Action;
+		public readonly int StartIndex;
+		public readonly IList Items;
+		/// <summary>
+		/// Use for messaging.  MAY retain a reference.
+		/// </summary>
+		readonly public EventBus Bus;
+		public DataSource_IncrementalUpdate(string name, NotifyCollectionChangedAction ncca, int startIndex, IList items, LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext)
+		 : base(ls, surface, components, dataContext) {
+			Name = name;
+			Action = ncca;
+			StartIndex = startIndex;
+			Items = items;
+		}
+	}
+	#endregion
 }
