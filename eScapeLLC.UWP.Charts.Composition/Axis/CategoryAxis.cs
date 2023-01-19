@@ -9,22 +9,22 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class CategoryAxis : AxisCommon, IRequireEnterLeave, IChartAxis, IDataSourceRenderSession<CategoryAxis.CategoryAxis_RenderState>,
+	public class CategoryAxis : AxisCommon, IRequireEnterLeave, IChartAxis, IDataSourceRenderSession<CategoryAxis.Axis_RenderState>,
 		IConsumer<Series_Extents>,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_FinalizeAxes>, IConsumer<Phase_Layout>, IConsumer<DataSource_RenderStart>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
-		class CategoryAxis_RenderState : RenderStateCore<CategoryAxis_ItemState> {
-			internal CategoryAxis_RenderState(List<ItemStateCore> state) : base(state) {
+		class Axis_RenderState : RenderStateCore<Axis_ItemState> {
+			internal Axis_RenderState(List<ItemStateCore> state) : base(state) {
 			}
 		}
-		class CategoryAxis_ItemState : ItemStateCore {
+		class Axis_ItemState : ItemStateCore {
 			internal FrameworkElement element;
 			internal string label;
-			public CategoryAxis_ItemState(int index) : base(index) { }
+			public Axis_ItemState(int index) : base(index) { }
 		}
-		class CategoryAxis_RenderSession : RenderSession<CategoryAxis_RenderState> {
-			internal CategoryAxis_RenderSession(IDataSourceRenderSession<CategoryAxis_RenderState> series, CategoryAxis_RenderState state) : base(series, state) { }
+		class Axis_RenderSession : RenderSession<Axis_RenderState> {
+			internal Axis_RenderSession(IDataSourceRenderSession<Axis_RenderState> series, Axis_RenderState state) : base(series, state) { }
 		}
 		#endregion
 		#region properties
@@ -85,7 +85,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (message.ExpectedItemType == null) return;
 			LabelBinding = Binding.For(message.ExpectedItemType, LabelMemberPath);
 			if (LabelBinding == null) return;
-			message.Register(new CategoryAxis_RenderSession(this, new CategoryAxis_RenderState(new List<ItemStateCore>())));
+			message.Register(new Axis_RenderSession(this, new Axis_RenderState(new List<ItemStateCore>())));
 		}
 		public void Consume(Phase_FinalizeAxes message) {
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
@@ -102,7 +102,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var pmatrix = ProjectionFor(rctx.Area, Reverse);
 			var matx = Matrix3x2.Multiply(pmatrix.model, pmatrix.proj);
 			double dx = 0, dy = 0;
-			foreach (CategoryAxis_ItemState state in AxisLabels) {
+			foreach (Axis_ItemState state in AxisLabels) {
 				if (state.element == null) continue;
 				var point = new Vector2(state.Index + (Reverse ? 1 : 0), YOffSetFor());
 				var dc = Vector2.Transform(point, matx);
@@ -129,13 +129,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IDataSourceRenderSession<CategoryAxis_RenderState>
-		void IDataSourceRenderSession<CategoryAxis_RenderState>.Preamble(CategoryAxis_RenderState state, IChartRenderContext icrc) {
+		void IDataSourceRenderSession<Axis_RenderState>.Preamble(Axis_RenderState state, IChartRenderContext icrc) {
 			ResetLimits();
 		}
-		void IDataSourceRenderSession<CategoryAxis_RenderState>.Render(CategoryAxis_RenderState state, int index, object item) {
+		void IDataSourceRenderSession<Axis_RenderState>.Render(Axis_RenderState state, int index, object item) {
 			if (LabelBinding == null) return;
 			state.ix = index;
-			var istate = new CategoryAxis_ItemState(index);
+			var istate = new Axis_ItemState(index);
 			state.itemstate.Add(istate);
 			if (LabelBinding.GetString(item, out string label) && !string.IsNullOrEmpty(label)) {
 				istate.label = label;
@@ -143,9 +143,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				Layer.Add(istate.element);
 			}
 		}
-		void IDataSourceRenderSession<CategoryAxis_RenderState>.RenderComplete(CategoryAxis_RenderState state) {
+		void IDataSourceRenderSession<Axis_RenderState>.RenderComplete(Axis_RenderState state) {
 		}
-		void IDataSourceRenderSession<CategoryAxis_RenderState>.Postamble(CategoryAxis_RenderState state) {
+		void IDataSourceRenderSession<Axis_RenderState>.Postamble(Axis_RenderState state) {
 			AxisLabels = state.itemstate;
 			//Layer.Remove(state.recycler.Unused);
 			//Layer.Add(state.recycler.Created);
