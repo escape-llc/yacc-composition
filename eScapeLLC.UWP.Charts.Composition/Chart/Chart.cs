@@ -2,6 +2,7 @@
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -139,8 +140,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region Chart
 	[TemplatePart(Name = PART_Canvas, Type = typeof(Canvas))]
-	public sealed class Chart : Control {
-		static readonly LogTools.Flag _trace = LogTools.Add("Chart", LogTools.Level.Verbose);
+	public sealed class Chart : Control, IConsumer<DataSource_RefreshRequest>, IConsumer<Component_RefreshRequest> {
+		static readonly LogTools.Flag _trace = LogTools.Add("Chart", LogTools.Level.Error);
 		/// <summary>
 		/// Control template part: canvas.
 		/// </summary>
@@ -155,10 +156,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Obtained from the XAML and programmatic.
 		/// </summary>
 		public ChartComponentCollection Components { get; private set; }
-		/// <summary>
-		/// Components that are IChartAxis.
-		/// </summary>
-		List<IChartAxis> Axes { get; set; }
 		EventBus Bus { get; set; }
 		/// <summary>
 		/// Obtained from the templated parent.
@@ -173,12 +170,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Components that entered before the Surface was ready (via XAML).
 		/// </summary>
 		List<ChartComponent> DeferredEnter { get; set; }
+		/// <summary>
+		/// XAML layers.
+		/// </summary>
+		List<IChartLayer> Layers { get; set; } = new List<IChartLayer>();
+		/// <summary>
+		/// Composition layers contain a SpriteVisual specifically for composition objects.
+		/// </summary>
+		List<IChartCompositionLayer> Compositions { get; set; } = new List<IChartCompositionLayer>();
 		#endregion
 		#region ctor
 		public Chart() {
 			this.DefaultStyleKey = typeof(Chart);
 			DeferredEnter = new List<ChartComponent>();
-			Axes = new List<IChartAxis>();
 			DataSources = new ChartDataSourceCollection();
 			DataSources.CollectionChanged += DataSources_CollectionChanged;
 			Components = new ChartComponentCollection();
@@ -199,8 +203,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public event TypedEventHandler<Chart, ChartErrorEventArgs> ChartError;
 		#endregion
 		#region extensions
-		List<IChartLayer> Layers { get; set; } = new List<IChartLayer>();
-		List<IChartCompositionLayer> Compositions { get; set; } = new List<IChartCompositionLayer>();
 		/// <summary>
 		/// Obtain UI elements from the control template.
 		/// Happens Before Chart_LayoutUpdated.
@@ -266,6 +268,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (nccea.OldItems != null) {
 					foreach (DataSource ds in nccea.OldItems) {
 						_trace.Verbose($"leave '{ds.Name}' {ds}");
+						ds.Bus = null;
+						Bus.UnregisterInstance(ds);
 						//ds.RefreshRequest -= DataSource_RefreshRequest;
 					}
 				}
@@ -278,7 +282,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 						}
 						//ds.RefreshRequest -= DataSource_RefreshRequest;
 						//ds.RefreshRequest += DataSource_RefreshRequest;
+						ds.Bus = Bus;
 						ds.DataContext = DataContext;
+						Bus.RegisterInstance(ds);
 					}
 				}
 			}
@@ -286,7 +292,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Error($"{Name} DataSources_CollectionChanged.unhandled: {ex}");
 			}
 			if (Surface != null) {
-				Refresh(CurrentLayout);
+				RenderComponents(CurrentLayout);
 			}
 		}
 		private void Chart_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args) {
@@ -311,7 +317,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					//_trace.Verbose($"LayoutUpdated.trigger ({sz.Width}x{sz.Height})");
 					var ls = new LayoutState() { Dimensions = sz, Layout = CurrentLayout.Layout };
 					try {
-						Refresh(ls);
+						RenderComponents(ls);
 					}
 					catch (Exception ex) {
 						_trace.Error($"{ex}");
@@ -333,7 +339,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ChartError?.Invoke(this, new ChartErrorEventArgs(cvr));
 		}
 		void ComponentEnter(IChartEnterLeaveContext icelc, ChartComponent cc) {
-			// invoke IREL
+			// allow bus access during enter
+			if (cc is IRequireConsume irc) {
+				irc.Bus = Bus;
+			}
 			if (cc is IRequireEnterLeave irel) {
 				irel.Enter(icelc);
 			}
@@ -341,10 +350,78 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		void ComponentLeave(IChartEnterLeaveContext icelc, ChartComponent cc) {
 			Bus.UnregisterInstance(cc);
-			// invoke IREL
+			// allow bus access during leave
 			if (cc is IRequireEnterLeave irel) {
 				irel.Leave(icelc);
 			}
+			if (cc is IRequireConsume irc) {
+				irc.Bus = null;
+			}
+		}
+		/// <summary>
+		/// Transforms for single component.
+		/// </summary>
+		/// <param name="ls">Layout state.</param>
+		/// <param name="rrea">Refresh request.</param>
+		void ComponentTransforms(LayoutState ls, ChartComponent cc, AxisUpdateState axis) {
+			if (cc is IProvideComponentRender irt) {
+				var rect = ls.Layout.For(cc);
+				_trace.Verbose($"component-transforms {cc} {axis} {rect}");
+				var ctx = new DefaultRenderContext(Surface, Components, ls.LayoutDimensions, rect, ls.Layout.RemainingRect, DataContext) { Type = RenderType.TransformsOnly };
+				irt.Transforms(ctx);
+			}
+		}
+		/// <summary>
+		/// Render for single component.
+		/// </summary>
+		/// <param name="ls">Layout state.</param>
+		/// <param name="rrea">Refresh request.</param>
+		void ComponentRender(LayoutState ls, ChartComponent cc, AxisUpdateState axis) {
+			if (cc is IProvideComponentRender ipcr) {
+				var rect = ls.Layout.For(cc);
+				_trace.Verbose($"component-render {cc} {axis} {rect}");
+				if (axis != AxisUpdateState.None) {
+					// put axis limits into correct state for IRequireRender components
+					//Phase_ResetAxes();
+					Bus.Consume(new Phase_InitializeAxes(Bus));
+					// message to get data series' extents re-broadcast
+					//Phase_AxisLimits(ValueExtents_DataSeries.Items);
+					Bus.Consume(new Component_RenderExtents(typeof(DataSource), Bus));
+				}
+				var ctx = new DefaultRenderContext(Surface, Components, ls.LayoutDimensions, rect, ls.Layout.RemainingRect, DataContext) { Type = RenderType.Component };
+				ipcr.Render(ctx);
+				if (axis != AxisUpdateState.None) {
+					// axes MUST be re-evaluated because this thing changed.
+					Bus.Consume(new Phase_RenderComponents(ls, Surface, Components, DataContext));
+					//Phase_AxisLimits(ValueExtents_NotDataSeries.Items);
+					Bus.Consume(new Component_RenderExtents(typeof(ChartComponent), Bus));
+					//Phase_AxesFinalized(ls);
+					Bus.Consume(new Phase_FinalizeAxes(ls, Bus));
+					//Phase_RenderPostAxesFinalized(ls);
+					//Phase_RenderAxes(ls);
+					Bus.Consume(new Phase_RenderAxes(ls, Surface, Components, DataContext));
+					//Phase_Transforms(ls);
+					Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
+				}
+				else {
+					ipcr.Transforms(ctx);
+					//if (rrea.Component is IRequireTransforms irt) {
+					//	irt.Transforms(ctx);
+					//}
+				}
+			}
+		}
+		void TransformsLayout(LayoutState ls) {
+			ls.Type = RenderType.TransformsOnly;
+			ls.InitializeLayoutContext(Padding);
+			//_trace.Verbose($"transforms-only starting {ls.LayoutRect}");
+			//Phase_Layout(ls);
+			Bus.Consume(new Phase_Layout(ls.Layout));
+			//_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
+			ls.Layout.FinalizeRects();
+			Bus.Consume(new Phase_LayoutComplete(ls));
+			//Phase_Transforms(ls);
+			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
 		}
 		/// <summary>
 		/// Perform a full layout and rendering pass.
@@ -385,24 +462,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			// Phase VIII: configure all transforms
 			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
 		}
-		void TransformsLayout(LayoutState ls) {
-			ls.Type = RenderType.TransformsOnly;
-			ls.InitializeLayoutContext(Padding);
-			//_trace.Verbose($"transforms-only starting {ls.LayoutRect}");
-			//Phase_Layout(ls);
-			Bus.Consume(new Phase_Layout(ls.Layout));
-			//_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
-			ls.Layout.FinalizeRects();
-			Bus.Consume(new Phase_LayoutComplete(ls));
-			//Phase_Transforms(ls);
-			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
-		}
 		/// <summary>
 		/// Top-level render components.
 		/// </summary>
 		/// <param name="message"></param>
-		void Refresh(LayoutState ls) {
-			//_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height}");
+		void RenderComponents(LayoutState ls) {
+			_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height}");
 			if (ls.Dimensions.Width == 0 || ls.Dimensions.Height == 0) {
 				return;
 			}
@@ -412,6 +477,88 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			else {
 				TransformsLayout(ls);
 			}
+		}
+		#endregion
+		#region handlers
+		/// <summary>
+		/// Component is requesting a refresh.
+		/// </summary>
+		/// <param name="message"></param>
+		public void Consume(Component_RefreshRequest message) {
+			ComponentRender(CurrentLayout, message.Component, message.Axis);
+		}
+		/// <summary>
+		/// Data source is requesting a refresh.
+		/// Render chart subject to current dirtiness.
+		/// This method is invoke-safe; it MAY be called from a different thread.
+		/// </summary>
+		/// <param name="ds">The data source.</param>
+		/// <param name="nccea">Collection change args.</param>
+		public async void Consume(DataSource_RefreshRequest message) {
+			_trace.Verbose($"refresh-request-ds '{message.Name}' {message.Args.Action}");
+			await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => {
+				if (Surface == null) return;
+				try {
+					switch (message.Args.Action) {
+						case NotifyCollectionChangedAction.Add:
+							IncrementalUpdate(NotifyCollectionChangedAction.Add, CurrentLayout, message.Name, message.Args.NewStartingIndex, message.Args.NewItems);
+							break;
+						case NotifyCollectionChangedAction.Remove:
+							IncrementalUpdate(NotifyCollectionChangedAction.Remove, CurrentLayout, message.Name, message.Args.OldStartingIndex, message.Args.OldItems);
+							break;
+						case NotifyCollectionChangedAction.Move:
+						case NotifyCollectionChangedAction.Replace:
+						case NotifyCollectionChangedAction.Reset:
+						default:
+							RenderComponents(CurrentLayout);
+							break;
+					}
+				}
+				catch (Exception ex) {
+					_trace.Error($"{Name} DataSource_RefreshRequest.unhandled: {ex}");
+				}
+			});
+		}
+		#endregion
+		#region incremental
+		/// <summary>
+		/// Process incremental updates to a <see cref="DataSource"/>.
+		/// </summary>
+		/// <param name="ncca">The operation.  Only <see cref="NotifyCollectionChangedAction.Add"/> and <see cref="NotifyCollectionChangedAction.Remove"/> are supported.</param>
+		/// <param name="ls">Current layout state.</param>
+		/// <param name="ds">The <see cref="DataSource"/> that changed.</param>
+		/// <param name="startIndex">Starting index of update.</param>
+		/// <param name="items">Item(s) involved in the update.</param>
+		void IncrementalUpdate(NotifyCollectionChangedAction ncca, LayoutState ls, string ds, int startIndex, IList items) {
+			_trace.Verbose($"incr-update {ncca} '{ds}' @{startIndex}+{items.Count}");
+			ls.Type = RenderType.Incremental;
+			// Phase I: reset axes
+			//Phase_ResetAxes();
+			Bus.Consume(new Phase_InitializeAxes(Bus));
+			// Phase II: Phase_Layout (skipped)
+			// Phase III: this loop comprises the DSRP
+			var dsrp = new DataSource_IncrementalUpdate(ds, ncca, startIndex, items, ls, Surface, Components, DataContext);
+			Bus.Consume(dsrp);
+			// TODO above stage MAY generate additional update events, e.g. to ISeriesItemValues, that MUST be collected and distributed
+			// TODO do it here and not allow things to directly connect to each other, so render pipeline stays under control
+			//Phase_AxisLimits(cc2 => cc2 is IRequireDataSourceUpdates irdsu2 && irdsu2.UpdateSourceName == ds.Name && cc2 is IProvideValueExtents);
+			// Phase IV: render non-axis components (IRequireRender)
+			// trigger render on other components since values they track may have changed
+			//foreach (IRequireRender irr in Render_NotAnAxis.Items.Where(cc2 => !(cc2 is IRequireDataSourceUpdates irdsu2 && irdsu2.UpdateSourceName == ds.Name)) /*Components.Where((cc2) => !(cc2 is IChartAxis) && !(cc2 is IRequireDataSourceUpdates irdsu2 && irdsu2.UpdateSourceName == ds.Name) && (cc2 is IRequireRender))*/) {
+			//	var ctx = ls.RenderFor(irr as ChartComponent, Surface, Components, DataContext);
+			//	irr.Render(ctx);
+			//}
+			Bus.Consume(new Phase_RenderComponents(ls, Surface, Components, DataContext));
+			//Phase_AxisLimits(cc2 => !(cc2 is IRequireDataSourceUpdates irdsu2 && irdsu2.UpdateSourceName == ds.Name) && cc2 is IProvideValueExtents);
+			// Phase V: axis-finalized
+			//Phase_AxesFinalized(ls);
+			Bus.Consume(new Phase_FinalizeAxes(ls, Bus));
+			// Phase VI: render axes
+			//Phase_RenderAxes(ls);
+			Bus.Consume(new Phase_RenderAxes(ls, Surface, Components, DataContext));
+			// Phase VII: transforms
+			//Phase_Transforms(ls);
+			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
 		}
 		#endregion
 	}
