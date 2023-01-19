@@ -5,12 +5,102 @@ using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region item state interfaces
+	#region ISeriesItem
+	/// <summary>
+	/// Entry point to series item data.
+	/// </summary>
+	public interface ISeriesItem {
+		/// <summary>
+		/// The index.
+		/// </summary>
+		int Index { get; }
+	}
+	#endregion
+	#region ISeriesItemValue
+	/// <summary>
+	/// Entry point to item values.
+	/// </summary>
+	public interface ISeriesItemValue {
+		/// <summary>
+		/// What "channel" this value is tracking.
+		/// Value is host-dependent if tracking multiple values, else SHOULD be ZERO.
+		/// </summary>
+		int Channel { get; }
+	}
+	#endregion
+	#region ISeriesItemCategoryValue
+	public interface ISeriesItemCategoryValue : ISeriesItemValue {
+		/// <summary>
+		/// The category axis value for the <see cref="Index"/>.
+		/// </summary>
+		int CategoryValue { get; }
+		/// <summary>
+		/// Category axis offset.
+		/// </summary>
+		double CategoryOffset { get; }
+		/// <summary>
+		/// The data value.
+		/// </summary>
+		double Value { get; }
+	}
+	#endregion
+	#region ISeriesItemValueValue
+	public interface ISeriesItemValueValue : ISeriesItemValue {
+		/// <summary>
+		/// The data value.
+		/// </summary>
+		double Value1 { get; }
+		/// <summary>
+		/// The data value.
+		/// </summary>
+		double Value2 { get; }
+	}
+	#endregion
+	#region ISeriesItemValues
+	/// <summary>
+	/// Item tracking multiple channels.
+	/// </summary>
+	public interface ISeriesItemValues {
+		/// <summary>
+		/// Enumerator to traverse the values.
+		/// SHOULD order-by channel.
+		/// </summary>
+		IEnumerable<ISeriesItemValue> YValues { get; }
+	}
+	#endregion
+	#region IProvideSeriesItemValues
+	/// <summary>
+	/// Ability to provide access to the current series item state.
+	/// </summary>
+	public interface IProvideSeriesItemValues {
+		/// <summary>
+		/// Enumerator to traverse the item values.
+		/// SHOULD operate on a COPY of the actual underlying sequence.
+		/// </summary>
+		IEnumerable<ISeriesItem> SeriesItemValues { get; }
+	}
+	#endregion
+	#region IProvideOriginalState
+	/// <summary>
+	/// Signal that this state item actually is wrapping a "stable" item.
+	/// This is for components that dynamically "wrap" their internal state up each time it's requested.
+	/// This is required for components that support incremental updates!
+	/// </summary>
+	public interface IProvideOriginalState {
+		/// <summary>
+		/// The Wrapped "stable" item this instance is wrapping.
+		/// </summary>
+		ISeriesItem Original { get; }
+	}
+	#endregion
+	#endregion
 	#region item states
 	/// <summary>
 	/// Items are generically described as a "vector" of components, 1-based.
 	/// These are not mapped to any particular coordinate axis, e.g. Component1 MAY be mapped to vertical (Y) or horizontal (X) cartesian coordinates.
 	/// </summary>
-	public abstract class ItemStateCore {
+	public abstract class ItemStateCore : ISeriesItem {
 		/// <summary>
 		/// The index of this value from data source.
 		/// </summary>
@@ -77,12 +167,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
 	/// <typeparam name="C">Composition shape element type.</typeparam>
-	public class ItemState_CategoryValue<C> : ItemStateC2 where C: CompositionObject {
+	public class ItemState_CategoryValue<C> : ItemStateC2, ISeriesItemCategoryValue where C: CompositionObject {
 		public readonly C Element;
-		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element) : base(index, c2) {
+		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element, int channel = 0) : base(index, c2) {
 			CategoryOffset = categoryOffset;
-			Element = element;	
+			Element = element;
+			Channel = channel;
 		}
+		#region properties
 		/// <summary>
 		/// Additional offset in the category component.
 		/// Category axis allocates "slots" that are integer indexed.
@@ -92,6 +184,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Redefine to include the <see cref="CategoryOffset"/>.
 		/// </summary>
 		public override double Component1 => Index + CategoryOffset;
+		#endregion
+		#region ISeriesItemCategoryValue
+		public int CategoryValue => Index;
+		public double Value => Component2;
+		public int Channel { get; private set; }
+		#endregion
 		/// <summary>
 		/// Calculate offset for Column series sprite.
 		/// If the value is negative, adjust the vertical offset by that amount.
