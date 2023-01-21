@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
@@ -17,7 +18,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		int Index { get; }
 	}
 	#endregion
-	#region ISeriesItemValue
+	#region ISeriesItemValue/Double/Object
 	/// <summary>
 	/// Entry point to item values.
 	/// </summary>
@@ -28,8 +29,23 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		int Channel { get; }
 	}
+	/// <summary>
+	/// Double value channel.
+	/// </summary>
+	public interface ISeriesItemValueDouble : ISeriesItemValue {
+		double DoubleValue { get; }
+	}
+	/// <summary>
+	/// Custom object value channel.
+	/// </summary>
+	public interface ISeriesItemValueCustom : ISeriesItemValueDouble {
+		object CustomValue { get; }
+	}
 	#endregion
 	#region ISeriesItemCategoryValue
+	/// <summary>
+	/// Represents a "typical" data series item.
+	/// </summary>
 	public interface ISeriesItemCategoryValue : ISeriesItemValue {
 		/// <summary>
 		/// The category axis value for the <see cref="Index"/>.
@@ -42,7 +58,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// The data value.
 		/// </summary>
-		double Value { get; }
+		double DataValue { get; }
 	}
 	#endregion
 	#region ISeriesItemValueValue
@@ -95,7 +111,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	#endregion
 	#endregion
-	#region item states
+	#region item state implementations
 	/// <summary>
 	/// Items are generically described as a "vector" of components, 1-based.
 	/// These are not mapped to any particular coordinate axis, e.g. Component1 MAY be mapped to vertical (Y) or horizontal (X) cartesian coordinates.
@@ -148,7 +164,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// Suitable for C_1(Index), C_2(Value) series.
 	/// </summary>
-	public class ItemStateC2 : ItemStateCore {
+	public class ItemStateC2 : ItemStateCore, ISeriesItemValueDouble {
 		/// <summary>
 		/// Alias for the <see cref="Index"/>.
 		/// </summary>
@@ -157,8 +173,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// The C_2 value.
 		/// </summary>
 		public double Component2 { get; private set; }
-		public ItemStateC2(int index, double c2) :base(index) {
+		public int Channel { get; private set; }
+		double ISeriesItemValueDouble.DoubleValue => Component2;
+		public ItemStateC2(int index, double c2, int channel = 0) :base(index) {
 			Component2 = c2;
+			Channel = channel;
 		}
 		public override double[] Components() => new double[] { Component1, Component2 };
 	}
@@ -167,12 +186,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
 	/// <typeparam name="C">Composition shape element type.</typeparam>
-	public class ItemState_CategoryValue<C> : ItemStateC2, ISeriesItemCategoryValue where C: CompositionObject {
+	public class ItemState_CategoryValue<C> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where C: CompositionObject {
 		public readonly C Element;
-		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element, int channel = 0) : base(index, c2) {
+		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element, int channel = 0) : base(index, c2, channel) {
 			CategoryOffset = categoryOffset;
 			Element = element;
-			Channel = channel;
 		}
 		#region properties
 		/// <summary>
@@ -187,8 +205,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region ISeriesItemCategoryValue
 		public int CategoryValue => Index;
-		public double Value => Component2;
-		public int Channel { get; private set; }
+		public double DataValue => Component2;
+		double ISeriesItemValueDouble.DoubleValue => Component2;
 		#endregion
 		/// <summary>
 		/// Calculate offset for Column series sprite.
@@ -243,13 +261,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Suitable for C_1(Index), C_2(Index2), C_3(Value) series, e.g. Heatmap.
 	/// </summary>
 	/// <typeparam name="C"></typeparam>
-	public class ItemState_CategoryCategoryValue<C> : ItemStateCore where C : CompositionShape {
+	public class ItemState_CategoryCategoryValue<C> : ItemStateCore, ISeriesItemValueDouble where C : CompositionShape {
 		public readonly C Element;
 
-		public ItemState_CategoryCategoryValue(int index, int index2, double c3, C element) : base(index) {
+		public ItemState_CategoryCategoryValue(int index, int index2, double c3, C element, int channel = 0) : base(index) {
 			Index2 = index2;
 			Component3 = c3;
 			Element = element;
+			Channel = channel;
 		}
 		/// <summary>
 		/// 2nd category index.
@@ -267,12 +286,52 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Value corresponding to C_1 and C_2.
 		/// </summary>
 		public double Component3 { get; private set; }
+		public int Channel { get; private set; }
+		double ISeriesItemValueDouble.DoubleValue => Component3;
 		public override double[] Components() => new double[] { Component1, Component2, Component3 };
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
 			var (xx, yy) = MappingSupport.MapComponents(Component1, Component2, cori, vori);
 			return new Vector2((float)xx, (float)yy);
 		}
+	}
+	#endregion
+	#region LayoutSession
+	/// <summary>
+	/// Base implementation for placement session.
+	/// <para>
+	/// A layout session represents a specific MP matrix combination.  The provider of the session chooses these based on current state.
+	/// </para>
+	/// <para>
+	/// A provider of placement implements an inner <see cref="ILayoutSession"/>
+	/// and receives its own <see cref="ISeriesItem"/>s back, then calculates placement based on its "inside knowledge" of the geometry represented by itself.
+	/// </para>
+	/// </summary>
+	public abstract class LayoutSession : ILayoutSession {
+		public readonly Matrix3x2 Product;
+		/// <summary>
+		/// Ctor.
+		/// </summary>
+		/// <param name="model">Model transform.</param>
+		/// <param name="projection">Projection transform.</param>
+		public LayoutSession(Matrix3x2 model, Matrix3x2 projection) {
+			Product = Matrix3x2.Multiply(model, projection);
+		}
+		/// <summary>
+		/// Take model coords and transform to PX.  This is the center point for placement.
+		/// </summary>
+		/// <param name="source">M coordinates.</param>
+		/// <returns>Placement location in PX.</returns>
+		protected Vector2 Project(Vector2 source) {
+			return Vector2.Transform(source, Product);
+		}
+		/// <summary>
+		/// Calculate placement information.
+		/// </summary>
+		/// <param name="isi">Source item.</param>
+		/// <param name="offset">Placement offset (in M coordinates).</param>
+		/// <returns>NULL: cannot calculate; !NULL: placement info.  center in PX; direction for label placement.</returns>
+		public abstract (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset);
 	}
 	#endregion
 	#region render states

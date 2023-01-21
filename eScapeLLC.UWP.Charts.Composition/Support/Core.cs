@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Numerics;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -570,5 +571,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		Unknown
 	};
+	#endregion
+	#region IProvideSeriesItemLayout
+	/// <summary>
+	/// Component provides layout session for label placement.
+	/// </summary>
+	public interface ILayoutSession {
+		/// <summary>
+		/// Perform layout of the given item (center in PX, label placement direction vector).
+		/// </summary>
+		/// <param name="isi">Item obtained from the source of the <see cref="ILayoutSession"/>.</param>
+		/// <param name="offset">Placement offset (in M coordinates).</param>
+		/// <returns>NULL: cannot calculate; !NULL: placement.</returns>
+		(Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset);
+	}
+	/// <summary>
+	/// Ability to provide <see cref="ILayoutSession"/>.
+	/// </summary>
+	public interface IProvideSeriesItemLayout {
+		/// <summary>
+		/// Create session for the given rendering area.
+		/// </summary>
+		/// <param name="area">Rendering area.</param>
+		/// <returns>New session.</returns>
+		ILayoutSession Create(Rect area);
+	}
 	#endregion
 }
