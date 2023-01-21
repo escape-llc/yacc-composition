@@ -270,7 +270,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 						_trace.Verbose($"leave '{ds.Name}' {ds}");
 						ds.Bus = null;
 						Bus.UnregisterInstance(ds);
-						//ds.RefreshRequest -= DataSource_RefreshRequest;
 					}
 				}
 				if (nccea.NewItems != null) {
@@ -280,8 +279,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 							// force this dirty so it refreshes
 							ds.IsDirty = true;
 						}
-						//ds.RefreshRequest -= DataSource_RefreshRequest;
-						//ds.RefreshRequest += DataSource_RefreshRequest;
 						ds.Bus = Bus;
 						ds.DataContext = DataContext;
 						Bus.RegisterInstance(ds);
