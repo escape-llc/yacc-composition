@@ -17,6 +17,6 @@
 		"StackedColumnSeries": "Error",
 		"ValueAxis": "Verbose",
 		"ValueAxisGrid": "Error",
-		"ValueLabels": "Error"
+		"ValueLabels": "Verbose"
 	}
 }

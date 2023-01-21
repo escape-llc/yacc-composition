@@ -25,6 +25,18 @@
 			<Setter Property="VerticalAlignment" Value="Center"/>
 			<Setter Property="HorizontalAlignment" Value="Left"/>
 		</Style>
+		<Style x:Key="Labels" TargetType="TextBlock">
+			<Setter Property="Foreground" Value="White"/>
+			<Setter Property="FontWeight" Value="Bold"/>
+			<Setter Property="TextAlignment" Value="Center"/>
+			<Setter Property="VerticalAlignment" Value="Center"/>
+			<Setter Property="HorizontalAlignment" Value="Center"/>
+			<Setter Property="FontSize" Value="12"/>
+		</Style>
+		<Style x:Key="BigLabels" BasedOn="{StaticResource Labels}" TargetType="TextBlock">
+			<Setter Property="FontSize" Value="16"/>
+			<Setter Property="Foreground" Value="Cyan"/>
+		</Style>
 		<DataTemplate x:Key="TextBlock">
 			<TextBlock Text="{Binding Text}"/>
 		</DataTemplate>
@@ -146,6 +158,8 @@
 			<yacc:LineSeries Name="LineSeries3" DataSourceName="Source2" ElementFactory="{StaticResource Line3Style}"
 				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value1"
 				LineOffset="1" />
+			<yacc:ValueLabels SourceName="BarSeries2" LabelFormatString="F2" x:Name="v_colv2" LabelTemplate="{StaticResource TextBlock}"
+				PlacementOffset="0,1" LabelOffset="0,-1" LabelStyle="{StaticResource BigLabels}" />
 			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
 			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" AxisMargin="0" LimitMaximum="40" LimitMinimum="-40" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
