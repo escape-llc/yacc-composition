@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Numerics;
 using System.Reflection;
+using System.ServiceModel.Channels;
+using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.UI;
 using Windows.UI.Composition;
@@ -17,7 +19,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
-	public class ColumnSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues,
+	public class ColumnSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
 		IDataSourceRenderSession<ColumnSeries.Series_RenderState>,
 		IConsumer<Phase_RenderTransforms>, IConsumer<Axis_Extents>, IConsumer<DataSource_RenderStart> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
@@ -43,6 +45,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		class Series_RenderSession : RenderSession<Series_RenderState> {
 			internal Series_RenderSession(IDataSourceRenderSession<Series_RenderState> series, Series_RenderState state) :base(series, state) { }
+		}
+		/// <summary>
+		/// Label placement session.
+		/// </summary>
+		class Series_LayoutSession : LayoutSession {
+			readonly double width;
+			readonly AxisOrientation c1axis;
+			readonly AxisOrientation c2axis;
+			internal Series_LayoutSession(Matrix3x2 model, Matrix3x2 projection, double width, AxisOrientation c1axis, AxisOrientation c2axis) : base(model, projection) {
+				this.width = width;
+				this.c1axis = c1axis;
+				this.c2axis = c2axis;
+			}
+			public override (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset) {
+				if(isi is Series_ItemState sis) {
+					var invert = sis.DataValue < 0 ? -1 : 1;
+					double hw = width / 2.0, hh = Math.Abs(sis.DataValue / 2.0);
+					var (xx, yy) = MappingSupport.MapComponents(sis.Component1 + hw + offset.X*hw, (sis.DataValue / 2.0) + offset.Y*hh*invert, c1axis, c2axis);
+					var (dx, dy) = MappingSupport.MapComponents(1, sis.DataValue > 0 ? 1 : -1, c1axis, c2axis);
+					var center = new Vector2((float)xx, (float)yy);
+					return (Project(center), new Point(dx, dy));
+				}
+				return null;
+			}
 		}
 		#endregion
 		#region ctor
@@ -204,6 +230,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			_trace.Verbose($"{Name} leave");
 			icelc.DeleteCompositionLayer(Layer);
 			Layer = null;
+		}
+		#endregion
+		#region IProvideSeriesItemLayout
+		public ILayoutSession Create(Rect area) {
+			var xaxis = CategoryAxis.Orientation == AxisOrientation.Horizontal ? CategoryAxis.Reversed : ValueAxis.Reversed;
+			var yaxis = CategoryAxis.Orientation == AxisOrientation.Vertical ? CategoryAxis.Reversed : ValueAxis.Reversed;
+			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
+			var proj = MatrixSupport.ProjectForQuadrant(q, area);
+			return new Series_LayoutSession(Model, proj, BarWidth, CategoryAxis.Orientation, ValueAxis.Orientation);
 		}
 		#endregion
 	}
