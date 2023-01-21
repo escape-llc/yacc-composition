@@ -128,6 +128,7 @@
     <Compile Include="Chart\ChartComponent.cs" />
     <Compile Include="Chart\DataSource.cs" />
     <Compile Include="Chart\Layer.cs" />
+    <Compile Include="Decorations\ValueLabels.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Series\CategoryValueSeries.cs" />
     <Compile Include="Series\ColumnSeries.cs" />
