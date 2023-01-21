@@ -134,6 +134,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public readonly Side AxisSide;
 		public readonly AxisType Type;
 		public readonly bool Reversed;
+		public readonly double Range;
 		public Axis_Extents(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed) {
 			AxisName = axisName;
 			Minimum = minimum;
@@ -141,6 +142,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 			AxisSide = axisSide;
 			Type = axisType;
 			Reversed = reversed;
+			Range = double.IsNaN(minimum) || double.IsNaN(maximum) ? double.NaN : maximum - minimum;
 		}
 		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
 	}
