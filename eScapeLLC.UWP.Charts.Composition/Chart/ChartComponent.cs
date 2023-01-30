@@ -1,17 +1,36 @@
 ﻿using eScape.Host;
+using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	public /*abstract*/ class Component_Operation {
+		public readonly ChartComponent Component;
+		public readonly RefreshRequestType Type;
+		public readonly AxisUpdateState Axis;
+		public Component_Operation(ChartComponent component, RefreshRequestType type, AxisUpdateState axis) {
+			Component = component;
+			Type = type;
+			Axis = axis;
+		}
+	}
 	public class ChartComponent : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
-		public bool Dirty { get; protected set; }
+		#region inner
+		public interface IForwardCommandPort {
+			void Forward(Component_RefreshRequest dso);
+		}
+		#endregion
+		/// <summary>
+		/// Used for unsolicited messages.
+		/// </summary>
+		public IForwardCommandPort Forward { get; set; }
 		/// <summary>
 		/// Return the name if set, otherwise the type.
 		/// </summary>
 		/// <returns>Name or type.</returns>
 		public string NameOrType() { return string.IsNullOrEmpty(Name) ? GetType().Name : Name; }
-		public void Consume(DataContextChangedEventArgs args) {
+		void IConsumer<DataContextChangedEventArgs>.Consume(DataContextChangedEventArgs args) {
 			if (DataContext != args.NewValue) {
 				DataContext = args.NewValue;
 			}

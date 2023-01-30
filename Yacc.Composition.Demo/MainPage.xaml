@@ -133,8 +133,8 @@
 	</Page.Resources>
 	<yacc:Chart HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError">
 		<yacc:Chart.DataSources>
-			<yacc:DataSource Name="Source1" Items="{x:Bind Items}" ExpectedItemType="local:Observation" />
-			<yacc:DataSource Name="Source2" Items="{x:Bind Items2}" ExpectedItemType="local:Observation"/>
+			<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1}" />
+			<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2}" />
 		</yacc:Chart.DataSources>
 		<yacc:Chart.Components>
 			<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}"

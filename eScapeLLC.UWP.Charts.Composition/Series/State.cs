@@ -7,6 +7,23 @@ using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region item state interfaces
+	/// <summary>
+	/// Used during bookkeeping operations to track item status.
+	/// </summary>
+	public enum ItemStatus {
+		/// <summary>
+		/// Item is exiting the Visual Tree.
+		/// </summary>
+		Exit,
+		/// <summary>
+		/// Item is "live" i.e. already tracking.
+		/// </summary>
+		Live,
+		/// <summary>
+		/// Item is entering Visual Tree.
+		/// </summary>
+		Enter
+	};
 	#region ISeriesItem
 	/// <summary>
 	/// Entry point to series item data.
@@ -120,7 +137,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// The index of this value from data source.
 		/// </summary>
-		public int Index { get; private set; }
+		public int Index { get; protected set; }
 		/// <summary>
 		/// Ctor.
 		/// </summary>
@@ -187,7 +204,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	/// <typeparam name="C">Composition shape element type.</typeparam>
 	public class ItemState_CategoryValue<C> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where C: CompositionObject {
-		public readonly C Element;
+		public C Element { get; protected set; }
 		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element, int channel = 0) : base(index, c2, channel) {
 			CategoryOffset = categoryOffset;
 			Element = element;

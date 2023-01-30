@@ -3,17 +3,16 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using Microsoft.Graphics.Canvas;
 using Microsoft.Graphics.Canvas.Geometry;
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
-using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class LineSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues,
-		IDataSourceRenderSession<LineSeries.Series_RenderState>,
-		IConsumer<Phase_RenderTransforms>, IConsumer<Axis_Extents>, IConsumer<DataSource_RenderStart> {
+	public class LineSeries : CategoryValueSeries,
+		IRequireEnterLeave, IProvideSeriesItemValues,
+		IConsumer<Phase_RenderTransforms> {
 		static LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
 		#region inner
 		public class Series_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
@@ -28,9 +27,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				this.bus = bus;
 			}
 		}
-		class Series_RenderSession : RenderSession<Series_RenderState> {
-			internal Series_RenderSession(IDataSourceRenderSession<Series_RenderState> series, Series_RenderState state) : base(series, state) { }
-		}
 		#endregion
 		#region ctor
 		public LineSeries() {
@@ -39,10 +35,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region properties
 		public double LineOffset { get; set; }
-		/// <summary>
-		/// How to create the elements for this series.
-		/// </summary>
-		public IElementFactory ElementFactory { get; set; }
 		/// <summary>
 		/// Return current state as read-only.
 		/// </summary>
@@ -58,43 +50,35 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Data needed for current state.
 		/// </summary>
 		protected List<ItemStateCore> ItemState { get; set; }
+		/// <summary>
+		/// Holds all the shapes for this series.
+		/// </summary>
+		protected CompositionContainerShape Container { get; set; }
+		#endregion
+		#region data source operations
+		protected override void Reset(DataSource_Reset dsr) {
+			var itemstate = new List<ItemStateCore>();
+			var shape = GetShape(dsr.Items, itemstate);
+			// remove update install elements
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			for (int ix = 0; ix < itemstate.Count; ix++) {
+				Series_ItemState state = itemstate[ix] as Series_ItemState;
+				if (state == null) continue;
+				UpdateLimits(ix, state.DataValue, 0);
+				// no geometry updates
+			}
+			Container.Shapes.Clear();
+			Container.Shapes.Add(shape);
+			ItemState = itemstate;
+		}
 		#endregion
 		#region handlers
-		public void Consume(DataSource_RenderStart message) {
-			if (ElementFactory == null) return;
-			if (message.Name != DataSourceName) return;
-			if (message.ExpectedItemType == null) return;
-			ValueBinding = Binding.For(message.ExpectedItemType, ValueMemberName);
-			if (!string.IsNullOrEmpty(LabelMemberName)) {
-				LabelBinding = Binding.For(message.ExpectedItemType, LabelMemberName);
-			}
-			else {
-				LabelBinding = ValueBinding;
-			}
-			if (ValueBinding == null) return;
-			message.Register(new Series_RenderSession(this, new Series_RenderState(new List<ItemStateCore>(), message.Bus)));
-		}
-		/// <summary>
-		/// Axis extents participate in the Model transform.
-		/// </summary>
-		/// <param name="message"></param>
-		public void Consume(Axis_Extents message) {
-			if (message.AxisName == CategoryAxisName) {
-				CategoryAxis = message;
-				if (double.IsNaN(CategoryAxis.Minimum) || double.IsNaN(CategoryAxis.Maximum)) return;
-				UpdateModelTransform();
-			}
-			else if (message.AxisName == ValueAxisName) {
-				ValueAxis = message;
-				if (double.IsNaN(ValueAxis.Minimum) || double.IsNaN(ValueAxis.Maximum)) return;
-				UpdateModelTransform();
-			}
-		}
 		/// <summary>
 		/// Render area participates in the Projection transform.
 		/// </summary>
 		/// <param name="message"></param>
-		public void Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
 			if (CategoryAxis == null || ValueAxis == null) return;
 			if (ItemState.Count == 0) return;
 			var rctx = message.ContextFor(this);
@@ -110,7 +94,46 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region helpers
-		void UpdateModelTransform() {
+		CompositionShape GetShape(IList items, List<ItemStateCore> itemstate) {
+			// appears to not work when AnyCPU is used
+			CanvasPathBuilder builder = new CanvasPathBuilder(new CanvasDevice());
+			using (builder) {
+				Series_ItemState prev = null;
+				for (int ix = 0; ix < items.Count; ix++) {
+					var state = CreateState(builder, ix, prev == null, items[ix]);
+					itemstate.Add(state);
+					prev = state;
+				}
+				builder.EndFigure(CanvasFigureLoop.Open);
+				var geom = CanvasGeometry.CreatePath(builder);
+				var path = new CompositionPath(geom);
+				var ctx = new PathGeometryContext(Container.Compositor, itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
+				var shape = ElementFactory.CreateElement(ctx);
+				shape.Comment = $"{Name}";
+				return shape;
+			}
+		}
+		Series_ItemState CreateState(CanvasPathBuilder cpb, int index, bool beginf, object item) {
+			if (ValueBinding.GetDouble(item, out double? value_val)) {
+				// short-circuit if it's NaN or NULL
+				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
+					return null;
+				}
+				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, value_val.Value, CategoryAxis.Orientation, ValueAxis.Orientation);
+				var pt = new Vector2((float)xx, (float)yy);
+				if (beginf) {
+					cpb.BeginFigure(pt);
+				}
+				else {
+					cpb.AddLine(pt);
+				}
+				var istate = new Series_ItemState(index, LineOffset, value_val.Value, null);
+				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
+				return istate;
+			}
+			return null;
+		}
+		protected override void UpdateModelTransform() {
 			if (CategoryAxis.Orientation == AxisOrientation.Horizontal) {
 				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum + 1, ValueAxis.Minimum, ValueAxis.Maximum);
 			}
@@ -138,66 +161,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			//if (ElementFactory == null) {
 			//	icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ElementFactory)}' was not set", new[] { nameof(ElementFactory) }));
 			//}
-			Layer = icelc.CreateCompositionLayer();
+			Compositor compositor = Window.Current.Compositor;
+			Container = compositor.CreateContainerShape();
+			Container.Comment = $"container_{Name}";
+			Layer = icelc.CreateCompositionLayer(Container);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName} {ValueAxis} c:{CategoryAxisName} {CategoryAxis} d:{DataSourceName}");
 		}
 		public void Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
+			Container = null;
 			icelc.DeleteCompositionLayer(Layer);
 			Layer = null;
-		}
-		#endregion
-		#region IDataSourceRenderSession<Series_RenderState>
-		void IDataSourceRenderSession<Series_RenderState>.Preamble(Series_RenderState state, IChartRenderContext icrc) {
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-		}
-		void IDataSourceRenderSession<Series_RenderState>.Render(Series_RenderState state, int index, object item) {
-			if (ValueBinding == null) return;
-			// safe to conduct business
-			if (ValueBinding.GetDouble(item, out double? value_val)) {
-				state.ix = index;
-				// short-circuit if it's NaN or NULL
-				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
-					return;
-				}
-				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, value_val.Value, CategoryAxis.Orientation, ValueAxis.Orientation);
-				var pt = new Vector2((float)xx, (float)yy);
-				if (index == 0) {
-					state.Builder.BeginFigure(pt);
-				}
-				else {
-					state.Builder.AddLine(pt);
-				}
-				var istate = new Series_ItemState(index, LineOffset, value_val.Value, null);
-				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
-				state.Add(istate, null);
-				UpdateLimits(index, value_val.Value, 0);
-			}
-		}
-		void IDataSourceRenderSession<Series_RenderState>.RenderComplete(Series_RenderState state) {
-			state.Builder.EndFigure(CanvasFigureLoop.Open);
-			// broadcast series extents
-			var msgcx = new Series_Extents(Name, DataSourceName, CategoryAxisName, Component1Minimum, Component1Maximum);
-			var msgvx = new Series_Extents(Name, DataSourceName, ValueAxisName, Component2Minimum, Component2Maximum);
-			state.bus.Consume(msgcx);
-			state.bus.Consume(msgvx);
-		}
-		void IDataSourceRenderSession<Series_RenderState>.Postamble(Series_RenderState state) {
-			using (state.Builder) {
-				var geom = CanvasGeometry.CreatePath(state.Builder);
-				var path = new CompositionPath(geom);
-				var ctx = new PathGeometryContext(state.compositor, state.itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
-				var shape = ElementFactory.CreateElement(ctx);
-				shape.Comment = $"{Name}";
-				state.container.Shapes.Add(shape);
-			}
-			// install elements
-			Layer.Use(sv => {
-				sv.Shapes.Clear();
-				sv.Shapes.Add(state.container);
-			});
-			ItemState = state.itemstate;
 		}
 		#endregion
 	}

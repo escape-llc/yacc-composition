@@ -3,15 +3,18 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Numerics;
+using System.Security.Cryptography;
 using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class CategoryAxis : AxisCommon, IRequireEnterLeave, IChartAxis, IDataSourceRenderSession<CategoryAxis.Axis_RenderState>,
-		IConsumer<Series_Extents>,
-		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_FinalizeAxes>, IConsumer<Phase_Layout>, IConsumer<DataSource_RenderStart>, IConsumer<Phase_RenderTransforms> {
+	public class CategoryAxis : AxisCommon,
+		IRequireEnterLeave, IChartAxis,
+		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
 		class Axis_RenderState : RenderStateCore<Axis_ItemState> {
@@ -22,9 +25,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			internal FrameworkElement element;
 			internal string label;
 			public Axis_ItemState(int index) : base(index) { }
-		}
-		class Axis_RenderSession : RenderSession<Axis_RenderState> {
-			internal Axis_RenderSession(IDataSourceRenderSession<Axis_RenderState> series, Axis_RenderState state) : base(series, state) { }
 		}
 		#endregion
 		#region properties
@@ -66,36 +66,80 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Layer = null;
 		}
 		#endregion
+		#region virtual data source handlers
+		protected virtual void Reset(DataSource_Reset dsr) {
+			var exit = new List<ItemStateCore>();
+			var enter = new List<ItemStateCore>();
+			if (AxisLabels.Count > 0) {
+				// exit
+				exit.AddRange(AxisLabels);
+			}
+			var itemstate = new List<ItemStateCore>();
+			for (int ix = 0; ix < dsr.Items.Count; ix++) {
+				var state = CreateState(ix, dsr.Items[ix]);
+				itemstate.Add(state);
+				if (state != null) {
+					enter.Add(state);
+				}
+			}
+			foreach (Axis_ItemState item in exit) {
+				if (item != null && item.element != null) {
+					Layer.Remove(item.element);
+				}
+			}
+			ResetLimits();
+			// reset limits
+			foreach (Axis_ItemState item in enter) {
+				if (item != null && item.element != null) {
+					Layer.Add(item.element);
+				}
+			}
+			AxisLabels = itemstate;
+		}
+		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) { }
+		protected virtual void Add(DataSource_Add add) { }
+		#endregion
 		#region handlers
-		public void Consume(Phase_Layout message) {
+		void IConsumer<Phase_Layout>.Consume(Phase_Layout message) {
 			var space = AxisMargin + /*AxisLineThickness + */ (Orientation == AxisOrientation.Horizontal ? MinHeight : MinWidth);
 			message.Context.ClaimSpace(this, Side, space);
 		}
-		public void Consume(Series_Extents message) {
+		void IConsumer<Component_Extents>.Consume(Component_Extents message) {
 			if (message.AxisName != Name) return;
 			Extents(message);
 		}
-		public void Consume(Phase_InitializeAxes message) {
+		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Bus.Consume(msg);
+			message.Reply(msg);
 		}
-		public void Consume(DataSource_RenderStart message) {
-			if (message.Name != DataSourceName) return;
-			if (message.ExpectedItemType == null) return;
-			LabelBinding = Binding.For(message.ExpectedItemType, LabelMemberPath);
-			if (LabelBinding == null) return;
-			message.Register(new Axis_RenderSession(this, new Axis_RenderState(new List<ItemStateCore>())));
+		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
+			if (message.Operation.Name != DataSourceName) return;
+			if(message.Operation is DataSource_Typed dstt) {
+				LabelBinding = Binding.For(dstt.ItemType, LabelMemberPath);
+				if (LabelBinding == null) return;
+			}
+			switch (message.Operation) {
+				case DataSource_Add dsa:
+					Add(dsa);
+					break;
+				case DataSource_Reset dsr:
+					Reset(dsr);
+					break;
+				case DataSource_SlidingWindow dst:
+					SlidingWindow(dst);
+					break;
+			}
 		}
-		public void Consume(Phase_FinalizeAxes message) {
+		void IConsumer<Phase_AxisExtents>.Consume(Phase_AxisExtents message) {
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Bus.Consume(msg);
+			message.Register(msg);
 		}
 		float YOffSetFor() {
 			if(Side == Side.Top) return 1;
 			return 0;
 		}
-		public void Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
 			if (AxisLabels.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var rctx = message.ContextFor(this);
@@ -119,6 +163,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var tb = new TextBlock() { Text = text, HorizontalAlignment = HorizontalAlignment.Left, HorizontalTextAlignment = TextAlignment.Left };
 			return tb;
 		}
+		Axis_ItemState CreateState(int index, object item) {
+			var istate = new Axis_ItemState(index);
+			if (LabelBinding.GetString(item, out string label) && !string.IsNullOrEmpty(label)) {
+				istate.label = label;
+				istate.element = CreateElement(label);
+			}
+			return istate;
+		}
 		#endregion
 		#region IChartAxis deprecate add to event
 		double IChartAxis.For(double value) {
@@ -126,31 +178,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		double IChartAxis.ScaleFor(double dimension) {
 			throw new NotImplementedException();
-		}
-		#endregion
-		#region IDataSourceRenderSession<CategoryAxis_RenderState>
-		void IDataSourceRenderSession<Axis_RenderState>.Preamble(Axis_RenderState state, IChartRenderContext icrc) {
-			ResetLimits();
-		}
-		void IDataSourceRenderSession<Axis_RenderState>.Render(Axis_RenderState state, int index, object item) {
-			if (LabelBinding == null) return;
-			state.ix = index;
-			var istate = new Axis_ItemState(index);
-			state.itemstate.Add(istate);
-			if (LabelBinding.GetString(item, out string label) && !string.IsNullOrEmpty(label)) {
-				istate.label = label;
-				istate.element = CreateElement(label);
-				Layer.Add(istate.element);
-			}
-		}
-		void IDataSourceRenderSession<Axis_RenderState>.RenderComplete(Axis_RenderState state) {
-		}
-		void IDataSourceRenderSession<Axis_RenderState>.Postamble(Axis_RenderState state) {
-			AxisLabels = state.itemstate;
-			//Layer.Remove(state.recycler.Unused);
-			//Layer.Add(state.recycler.Created);
-			//RebuildAxisGeometry();
-			Dirty = false;
 		}
 		#endregion
 	}

@@ -251,25 +251,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 	}
 	#endregion
-	#region DefaultDataSourceRenderContext
-	/// <summary>
-	/// Default implementation for IDataSourceRenderContext.
-	/// </summary>
-	public class DefaultDataSourceRenderContext : DefaultRenderContext, IDataSourceRenderContext {
-		/// <summary>
-		/// Ctor.
-		/// </summary>
-		/// <param name="surface"></param>
-		/// <param name="components"></param>
-		/// <param name="sz"></param>
-		/// <param name="rc"></param>
-		/// <param name="sa"></param>
-		/// <param name="dc"></param>
-		public DefaultDataSourceRenderContext(Canvas surface, ObservableCollection<ChartComponent> components, Size sz, Rect rc, Rect sa, object dc)
-		: base(surface, components, sz, rc, sa, dc) {
-		}
-	}
-	#endregion
 	#region DefaultEnterLeaveContext
 	/// <summary>
 	/// Default impl of the enter/leave context.
@@ -329,12 +310,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			icl.Clear();
 			Layers.Remove(icl);
 		}
-		#endregion
-		#region IChartErrorInfo
-		void IChartErrorInfo.Report(ChartValidationResult cvr) {
-			Errors.Add(cvr);
-		}
-		IChartCompositionLayer IChartEnterLeaveContext.CreateCompositionLayer() {
+		IChartCompositionLayer IChartEnterLeaveContext.CreateCompositionLayer(params CompositionShape[] cos) {
 			var local = new Canvas() {
 				HorizontalAlignment = HorizontalAlignment.Stretch,
 				VerticalAlignment = VerticalAlignment.Stretch,
@@ -343,6 +319,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			};
 			Surface.Children.Add(local);
 			var ccl = new CompositionLayer(local, NextZIndex++);
+			if(cos != null && cos.Length > 0) {
+				(ccl as IChartCompositionLayer).Use(sv => {
+					foreach(var co in cos) {
+						sv.Shapes.Add(co);
+					}
+				});
+			}
 			Compositions.Add(ccl);
 			return ccl;
 		}
@@ -351,6 +334,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Surface.Children.Remove(local);
 			icl.Clear();
 			Compositions.Remove(icl);
+		}
+		#endregion
+		#region IChartErrorInfo
+		void IChartErrorInfo.Report(ChartValidationResult cvr) {
+			Errors.Add(cvr);
 		}
 		#endregion
 	}

@@ -168,6 +168,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region IChartCompositionLayer
 	public interface IChartCompositionLayer : IChartLayerCore {
+		/// <summary>
+		/// Obtain access to the underlying <see cref="ShapeVisual"/> for this layer.
+		/// </summary>
+		/// <param name="useit"></param>
 		void Use(Action<ShapeVisual> useit);
 	}
 	#endregion
@@ -281,126 +285,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		RenderType Type { get; }
 	}
 	#endregion
-	#region IDataSourceRenderContext
-	/// <summary>
-	/// Context for the DataSource.Render method.
-	/// </summary>
-	public interface IDataSourceRenderContext : IChartRenderContext {
-	}
-	#endregion
-	#region IDataSourceRenderer
-	/// <summary>
-	/// Ability to render the items of a data source.
-	/// preamble, foreach render, postamble.
-	/// </summary>
-	public interface IDataSourceRenderer {
-		/// <summary>
-		/// Return a state object that gets passed back on subsequent calls.
-		/// Includes limit initialization.
-		/// </summary>
-		/// <param name="icrc">Render context.</param>
-		/// <returns>NULL: do not participate; !NULL: The state.</returns>
-		void Preamble(IChartRenderContext icrc);
-		/// <summary>
-		/// Render the current item.
-		/// Includes limit updates.
-		/// </summary>
-		/// <param name="index">Data index [0..N).</param>
-		/// <param name="item">Current item.</param>
-		void Render(int index, object item);
-		/// <summary>
-		/// Apply axis and other linked component updates.
-		/// Called after all items are processed, and before Postamble().
-		/// Not called if Preamble() returned NULL.
-		/// </summary>
-		void RenderComplete();
-		/// <summary>
-		/// Perform terminal actions.
-		/// Axis limits were finalized (in RenderComplete) and MAY be use in layout calculations.
-		/// Not called if Preamble() returned NULL.
-		/// </summary>
-		void Postamble();
-	}
-	#endregion
-	#region IDataSourceRenderSession<S>
-	/// <summary>
-	/// Client interface for render session.
-	/// </summary>
-	/// <typeparam name="S">State type.</typeparam>
-	public interface IDataSourceRenderSession<S> {
-		/// <summary>
-		/// Prepare to render collection.
-		/// </summary>
-		/// <param name="state">Comes from render start.</param>
-		/// <param name="icrc">Render context.</param>
-		void Preamble(S state, IChartRenderContext icrc);
-		/// <summary>
-		/// Render the current item.
-		/// Includes limit updates.
-		/// </summary>
-		/// <param name="state">Comes from render start.</param>
-		/// <param name="index">Data index [0..N).</param>
-		/// <param name="item">Current item.</param>
-		void Render(S state, int index, object item);
-		/// <summary>
-		/// Apply axis and other linked component updates.
-		/// Called after all items are processed, and before Postamble().
-		/// Not called if Preamble() returned NULL.
-		/// </summary>
-		/// <param name="state">Comes from render start.</param>
-		void RenderComplete(S state);
-		/// <summary>
-		/// Perform terminal actions.
-		/// Axis limits were finalized (in RenderComplete) and MAY be use in layout calculations.
-		/// Not called if Preamble() returned NULL.
-		/// </summary>
-		/// <param name="state">Comes from render start.</param>
-		void Postamble(S state);
-	}
-	/// <summary>
-	/// Default implementation.
-	/// </summary>
-	/// <typeparam name="S">State type.</typeparam>
-	public class RenderSession<S> : IDataSourceRenderer {
-		readonly IDataSourceRenderSession<S> idsrs;
-		readonly S state;
-		/// <summary>
-		/// Ctor.
-		/// </summary>
-		/// <param name="idsrs">Host interface.</param>
-		/// <param name="state">State to use; passed to host interface.</param>
-		public RenderSession(IDataSourceRenderSession<S> idsrs, S state) {
-			this.idsrs = idsrs;
-			this.state = state;
-		}
-		void IDataSourceRenderer.Postamble() { idsrs.Postamble(state); }
-		void IDataSourceRenderer.Preamble(IChartRenderContext icrc) { idsrs.Preamble(state, icrc); }
-		void IDataSourceRenderer.Render(int index, object item) { idsrs.Render(state, index, item); }
-		void IDataSourceRenderer.RenderComplete() { idsrs.RenderComplete(state); }
-	}
-	#endregion
-	#region IProvideValueExtents
-	/// <summary>
-	/// Ability to provide Value-Axis extents.
-	/// </summary>
-	public interface IProvideValueExtents {
-		/// <summary>
-		/// The lowest value.
-		/// If unset, MUST be double.NaN.
-		/// </summary>
-		double Minimum { get; }
-		/// <summary>
-		/// The highest value.
-		/// If unset, MUST be double.NaN.
-		/// </summary>
-		double Maximum { get; }
-		/// <summary>
-		/// Name of the axis.
-		/// SHOULD be not-empty.
-		/// </summary>
-		String ValueAxisName { get; }
-	}
-	#endregion
 	#region IChartEnterLeaveContext
 	/// <summary>
 	/// The context for <see cref="IRequireEnterLeave"/> interface.
@@ -429,7 +313,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Create a composition layer.
 		/// </summary>
 		/// <returns></returns>
-		IChartCompositionLayer CreateCompositionLayer();
+		IChartCompositionLayer CreateCompositionLayer(params CompositionShape[] cos);
+		/// <summary>
+		/// Delete given composition layer (and its children).
+		/// </summary>
+		/// <param name="icl"></param>
 		void DeleteCompositionLayer(IChartCompositionLayer icl);
 	}
 	#endregion

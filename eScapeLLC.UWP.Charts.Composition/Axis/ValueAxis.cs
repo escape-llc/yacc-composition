@@ -5,13 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Xml.Linq;
+using System.Security.Cryptography;
+using System.ServiceModel.Channels;
 using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
 using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Media;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region IValueAxisLabelSelectorContext
@@ -86,7 +85,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region ValueAxis
 	public class ValueAxis : AxisCommon, IChartAxis, IRequireEnterLeave,
-		IConsumer<Series_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_FinalizeAxes>, IConsumer<Phase_Layout>,
+		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
 		IConsumer<Phase_RenderAxes>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueAxis", LogTools.Level.Error);
 		#region inner
@@ -187,6 +186,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public DataTemplate LabelTemplate { get { return (DataTemplate)GetValue(LabelTemplateProperty); } set { SetValue(LabelTemplateProperty, value); } }
 		protected Binding LabelBinding { get; set; }
+		protected Dictionary<string, Component_Extents> ExtentMap { get; set; } = new Dictionary<string, Component_Extents>();
 		#endregion
 		#region ctor
 		public ValueAxis() {
@@ -205,24 +205,52 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region handlers
-		public void Consume(Series_Extents message) {
+		void IConsumer<Component_Extents>.Consume(Component_Extents message) {
 			if (message.AxisName != Name) return;
-			Extents(message);
+			ExtentMap[message.SeriesName] = message;
+			//Extents(message);
 		}
-		public void Consume(Phase_InitializeAxes message) {
+		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Bus.Consume(msg);
+			message.Reply(msg);
 		}
-		public void Consume(Phase_FinalizeAxes message) {
+		(double min, double max) CalculateLimits() {
+			double min = double.NaN;
+			double max = double.NaN;
+			foreach(var kvp in ExtentMap) {
+				var xt = kvp.Value;
+				if (!double.IsNaN(xt.Minimum)) {
+					if (double.IsNaN(LimitMinimum) && (double.IsNaN(min) || xt.Minimum < min)) {
+						min = xt.Minimum;
+					}
+				}
+				if (!double.IsNaN(xt.Maximum)) {
+					if (double.IsNaN(LimitMaximum) && (double.IsNaN(max) || xt.Maximum > max)) {
+						max = xt.Maximum;
+					}
+				}
+			}
+			return (min, max);
+		}
+		void IConsumer<Phase_AxisExtents>.Consume(Phase_AxisExtents message) {
+			ResetLimits();
+			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) {
+				foreach (var kvp in ExtentMap) {
+					Extents(kvp.Value);
+				}
+			}
+			//var (min, max) = CalculateLimits();
+			//Minimum = double.IsNaN(min) ? LimitMinimum : min;
+			//Maximum = double.IsNaN(max) ? LimitMaximum : max;
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Bus.Consume(msg);
+			message.Register(msg);
 		}
-		public void Consume(Phase_Layout message) {
+		void IConsumer<Phase_Layout>.Consume(Phase_Layout message) {
 			var space = AxisMargin + MinWidth;
 			message.Context.ClaimSpace(this, Side, space);
 		}
-		public void Consume(Phase_RenderAxes message) {
+		void IConsumer<Phase_RenderAxes>.Consume(Phase_RenderAxes message) {
 			if(double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var icrc = message.ContextFor(this);
 			var padding = 2 * AxisMargin;
@@ -334,7 +362,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Verbose($"{Name} sizeChanged[{state.Tick.Index}] loc:{loc} yv:{state.Tick.Value} o:({state.xorigin},{state.yorigin}) ns:{e.NewSize} ds:{fe.DesiredSize}");
 			}
 		}
-		public void Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
 			if (AxisLabels.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var icrc = message.ContextFor(this);

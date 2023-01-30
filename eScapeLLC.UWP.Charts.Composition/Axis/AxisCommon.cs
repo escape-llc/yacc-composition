@@ -58,19 +58,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public void ResetLimits() {
 			Minimum = LimitMinimum;
 			Maximum = LimitMaximum;
-			Dirty = true;
 		}
 		public void UpdateLimits(double value) {
 			if (double.IsNaN(LimitMinimum) && (double.IsNaN(Minimum) || value < Minimum)) {
 				Minimum = value;
-				Dirty = true;
 			}
 			if (double.IsNaN(LimitMaximum) && (double.IsNaN(Maximum) || value > Maximum)) {
 				Maximum = value;
-				Dirty = true;
 			}
 		}
-		protected void Extents(Series_Extents message) {
+		/// <summary>
+		/// Update the <see cref="Minimum"/> and <see cref="Maximum"/> based on incoming values.
+		/// </summary>
+		/// <param name="message"></param>
+		protected void Extents(Component_Extents message) {
 			bool did = false;
 			double xmin = Minimum, xmax = Maximum;
 			if (!double.IsNaN(message.Minimum)) {
@@ -87,7 +88,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			_trace.Verbose($"{Name} extents did:{did} min:{xmin} max:{xmax} s:{message.SeriesName} smin:{message.Minimum}  smax:{message.Maximum}");
 			if (did) {
-				Dirty = true;
+				//Dirty = true;
 			}
 		}
 		private void AdjustOrientation(Side side) {

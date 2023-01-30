@@ -15,8 +15,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// <summary>
 		/// Use to send <see cref="Axis_Extents"/> events.
 		/// </summary>
-		readonly public IProvideConsume Bus;
+		readonly IProvideConsume Bus;
 		public Phase_InitializeAxes(IProvideConsume eb) { Bus = eb; }
+		public void Reply(Axis_Extents axis) { Bus.Consume(axis); }
 	}
 	/// <summary>
 	/// Instruct components to claim space.  Components using the Series Area MUST NOT claim space.
@@ -46,12 +47,24 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <summary>
 	/// Instruct axes to broadcast extents.
 	/// </summary>
-	public sealed class Phase_FinalizeAxes : PhaseWithLayoutState {
+	public sealed class Phase_AxisExtents : PhaseWithLayoutState {
 		/// <summary>
 		/// Use to send <see cref="Axis_Extents"/> events.
 		/// </summary>
-		readonly public IProvideConsume Bus;
-		public Phase_FinalizeAxes(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
+		readonly IProvideConsume Bus;
+		public Phase_AxisExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
+		public void Register(Axis_Extents axis) { Bus.Consume(axis); }
+	}
+	/// <summary>
+	/// Instruct all components to broadcast extents.
+	/// </summary>
+	public sealed class Phase_ComponentExtents : PhaseWithLayoutState {
+		/// <summary>
+		/// Use to send <see cref="Component_Extents"/> events.
+		/// </summary>
+		readonly IProvideConsume Bus;
+		public Phase_ComponentExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
+		public void Register(Component_Extents cc) { Bus.Consume(cc); }
 	}
 	/// <summary>
 	/// Core for phases with render context.
@@ -71,10 +84,19 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Instruct non-DSRP components to render.
+	/// Instruct DSRP components to render.
 	/// </summary>
-	public sealed class Phase_RenderComponents : PhaseWithRenderContext {
-		public Phase_RenderComponents(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) :base(ls, surface, components, dataContext) {}
+	public sealed class Phase_DataSourceOperation : PhaseWithRenderContext {
+		public readonly string Name;
+		public readonly DataSource_Operation Operation;
+		public Phase_DataSourceOperation(
+			string name,
+			LayoutState ls, Canvas surface,
+			ObservableCollection<ChartComponent> components,
+			object dataContext, DataSource_Operation operation) : base(ls, surface, components, dataContext) {
+			Name = name;
+			Operation = operation;
+		}
 	}
 	/// <summary>
 	/// Instruct axis components to render (after limits are established).
@@ -91,9 +113,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	#endregion
 	#region Series events
 	/// <summary>
-	/// Send on EB when a series has update to its extents.
+	/// Send on EB when a component has update to its extents.
 	/// </summary>
-	public sealed class Series_Extents {
+	public sealed class Component_Extents {
 		/// <summary>
 		/// MUST match receiver's series name.
 		/// </summary>
@@ -108,7 +130,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public readonly string AxisName;
 		public readonly double Minimum;
 		public readonly double Maximum;
-		public Series_Extents(string seriesName, string dataSourceName, string axisName, double minimum, double maximum) {
+		public Component_Extents(string seriesName, string dataSourceName, string axisName, double minimum, double maximum) {
 			SeriesName = seriesName;
 			DataSourceName = dataSourceName;
 			AxisName = axisName;
@@ -147,116 +169,38 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
 	}
 	#endregion
+	#region CommandPort
+	public abstract class CommandPort_RefreshRequest { }
+	#endregion
 	#region Component events
 	/// <summary>
-	/// Instruct components to broadcast their current extents.
-	/// Used during component-only render.
+	/// Specific component is requesting refresh via command port.
 	/// </summary>
-	public sealed class Component_RenderExtents {
-		/// <summary>
-		/// Use to send <see cref="Series_Extents"/> message(s).
-		/// </summary>
-		public readonly IProvideConsume Bus;
-		/// <summary>
-		/// Indicates what type of component SHOULD respond to this message.
-		/// </summary>
-		public readonly Type Target;
-		public Component_RenderExtents(Type target, IProvideConsume bus) {
-			Target = target;
-			Bus = bus;
-		}
-	}
-	/// <summary>
-	/// Specific component is requesting refresh; triggers abbreviated render cycle.
-	/// </summary>
-	public sealed class Component_RefreshRequest {
-		public readonly ChartComponent Component;
-		public readonly RefreshRequestType Type;
-		public readonly AxisUpdateState Axis;
-		public Component_RefreshRequest(ChartComponent component, RefreshRequestType rrt, AxisUpdateState aus) {
-			Component = component;
-			this.Type = rrt;
-			this.Axis = aus;
+	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
+		public readonly string Name;
+		public readonly Component_Operation Operation;
+		public Component_RefreshRequest(Component_Operation op) {
+			Operation = op;
+			Name = op.Component.Name;
 		}
 	}
 	#endregion
 	#region DataSource events
 	/// <summary>
-	/// External source is requesting a refresh on the data source, e.g. it modified a non-notifying collection like <see cref="IList{T}"/>.
+	/// Data source is requesting an operation via command port.
 	/// </summary>
-	public sealed class DataSource_RefreshRequest {
+	public sealed class DataSource_RefreshRequest : CommandPort_RefreshRequest {
+		/// <summary>
+		/// Name of data source.
+		/// </summary>
 		public readonly string Name;
-		public readonly NotifyCollectionChangedEventArgs Args;
-		public DataSource_RefreshRequest(string name, NotifyCollectionChangedEventArgs args) {
+		/// <summary>
+		/// Command to execute.
+		/// </summary>
+		public readonly DataSource_Operation Operation;
+		public DataSource_RefreshRequest(string name, DataSource_Operation cmd) {
 			Name = name;
-			Args = args;
-		}
-	}
-	/// <summary>
-	/// Advertise start of Data Source Render Pipeline (DSRP).
-	/// Interested parties MUST call <see cref="Register(IDataSourceRenderer)"/> to participate.
-	/// </summary>
-	public sealed class DataSource_RenderStart {
-		readonly List<IDataSourceRenderer> states;
-		/// <summary>
-		/// MUST match name of receiver's data source.
-		/// </summary>
-		readonly public string Name;
-		/// <summary>
-		/// Receiver SHOULD verify property access prior to registration.
-		/// </summary>
-		readonly public Type ExpectedItemType;
-		/// <summary>
-		/// Use for messaging.  MAY retain a reference.
-		/// </summary>
-		readonly public IProvideConsume Bus;
-		/// <summary>
-		/// Ctor.
-		/// </summary>
-		/// <param name="name">Name of data source advertising.</param>
-		/// <param name="type">Expected item type.</param>
-		/// <param name="states">Accumulate registrations.</param>
-		/// <param name="bus">Use for messaging.</param>
-		public DataSource_RenderStart(string name, Type type, List<IDataSourceRenderer> states, IProvideConsume bus) {
-			Name = name;
-			ExpectedItemType = type;
-			this.states = states;
-			Bus = bus;
-		}
-		/// <summary>
-		/// Express interest in participating in DSRP on this data source.
-		/// Event receiver MAY register multiple instances.
-		/// </summary>
-		/// <param name="state">Renderer to register.</param>
-		public void Register(IDataSourceRenderer state) { states.Add(state); }
-	}
-	/// <summary>
-	/// Advertise end of DSRP for data source.
-	/// </summary>
-	public sealed class DataSource_RenderEnd  {
-		public readonly string Name;
-		public DataSource_RenderEnd(string name) { Name = name; }
-	}
-	/// <summary>
-	/// Data Source notifying of an incremental update, e.g. element added/removed.
-	/// Receiver SHOULD make the parallel update to visuals.
-	/// IST: underlying collection was already modified!
-	/// </summary>
-	public sealed class DataSource_IncrementalUpdate : PhaseWithRenderContext {
-		public readonly string Name;
-		public readonly NotifyCollectionChangedAction Action;
-		public readonly int StartIndex;
-		public readonly IList Items;
-		/// <summary>
-		/// Use for messaging.  MAY retain a reference.
-		/// </summary>
-		readonly public EventBus Bus;
-		public DataSource_IncrementalUpdate(string name, NotifyCollectionChangedAction ncca, int startIndex, IList items, LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext)
-		 : base(ls, surface, components, dataContext) {
-			Name = name;
-			Action = ncca;
-			StartIndex = startIndex;
-			Items = items;
+			Operation = cmd;
 		}
 	}
 	#endregion

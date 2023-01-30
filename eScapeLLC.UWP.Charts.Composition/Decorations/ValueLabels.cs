@@ -25,7 +25,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		ISeriesItemValue ItemValue { get; }
 	}
 	#endregion
-	public class ValueLabels : ChartComponent, IRequireEnterLeave, IConsumer<Phase_RenderComponents>, IConsumer<Phase_RenderTransforms> {
+	public class ValueLabels : ChartComponent, IRequireEnterLeave,
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueLabels", LogTools.Level.Error);
 		#region inner
 		class Item_State : ItemStateCore {
@@ -194,9 +195,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="rrt">Request type.</param>
 		/// <param name="aus">Axis update status.</param>
 		protected void Refresh(RefreshRequestType rrt, AxisUpdateState aus) {
-			Dirty = true;
 			//RefreshRequest?.Invoke(this, new RefreshRequestEventArgs(rrt, aus, this));
-			Bus?.Consume(new Component_RefreshRequest(this, rrt, aus));
+			Forward?.Forward(new Component_RefreshRequest(new Component_Operation(this, rrt, aus)));
 		}
 		protected void EnsureComponents(IChartComponentContext icrc) {
 			var icei = icrc as IChartErrorInfo;
@@ -397,7 +397,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region handlers
-		public void Consume(Phase_RenderComponents message) {
+		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
 			if (LabelTemplate == null /*&& Theme?.TextBlockTemplate == null */) {
 				// already reported an error so this should be no surprise
 				return;
@@ -432,10 +432,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				TeardownElements(recycler.Unused);
 				Layer.Remove(recycler.Unused);
 				Layer.Add(recycler.Created);
-				Dirty = false;
 			}
 		}
-		public void Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
 			if (ItemState.Count == 0) return;
 			var icrc = message.ContextFor(this);
 			_trace.Verbose($"{Name} transforms a:{icrc.Area} source:{Source?.Name} type:{icrc.Type}");

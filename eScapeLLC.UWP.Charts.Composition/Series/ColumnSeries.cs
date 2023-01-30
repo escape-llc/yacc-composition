@@ -4,24 +4,22 @@ using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using System.ServiceModel.Channels;
+using System.Security.Cryptography;
 using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Markup;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
-	public class ColumnSeries : CategoryValueSeries, IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
-		IDataSourceRenderSession<ColumnSeries.Series_RenderState>,
-		IConsumer<Phase_RenderTransforms>, IConsumer<Axis_Extents>, IConsumer<DataSource_RenderStart> {
+	public class ColumnSeries : CategoryValueSeries,
+		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
+		IConsumer<Phase_RenderTransforms> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
 		/// <summary>
@@ -30,21 +28,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public class Series_ItemState : ItemState_CategoryValue<CompositionShape> {
 			public Series_ItemState(int index, double categoryOffset, double value, CompositionShape css) : base(index, categoryOffset, value, css) {
 			}
-		}
-		/// <summary>
-		/// Render state.
-		/// </summary>
-		class Series_RenderState : RenderState_ShapeContainer<Series_ItemState> {
-			internal readonly IProvideConsume bus;
-			internal Series_RenderState(List<ItemStateCore> state, IProvideConsume bus) : base(state) {
-				this.bus = bus;
-			}
-		}
-		/// <summary>
-		/// Shim for render session.
-		/// </summary>
-		class Series_RenderSession : RenderSession<Series_RenderState> {
-			internal Series_RenderSession(IDataSourceRenderSession<Series_RenderState> series, Series_RenderState state) :base(series, state) { }
+			public void Reindex(int idx) { Index = idx; }
+			public void ResetElement() { Element = null; }
+			public void SetElement(CompositionShape cs) { Element = cs; }
 		}
 		/// <summary>
 		/// Label placement session.
@@ -88,10 +74,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public double BarWidth { get; set; } = 0.5;
 		/// <summary>
-		/// How to create the elements for this series.
-		/// </summary>
-		public IElementFactory ElementFactory { get; set; }
-		/// <summary>
 		/// Return current state as read-only.
 		/// </summary>
 		public IEnumerable<ISeriesItem> SeriesItemValues => ItemState.AsReadOnly();
@@ -106,9 +88,179 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Data needed for current state.
 		/// </summary>
 		protected List<ItemStateCore> ItemState { get; set; }
+		/// <summary>
+		/// Holds all the shapes for this series.
+		/// </summary>
+		protected CompositionContainerShape Container { get; set; }
 		#endregion
 		#region helpers
-		void UpdateModelTransform() {
+		IEnumerable<(ItemStatus st, Series_ItemState state)> Entering(System.Collections.IList items) {
+			for (int ix = 0; ix < items.Count; ix++) {
+				var state = CreateState(Container.Compositor, ix, items[ix]);
+				yield return (ItemStatus.Enter, state);
+			}
+		}
+		void UpdateOffset(Series_ItemState item) {
+			if (item.Element != null) {
+				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
+				_trace.Verbose($"{Name}[{item.Index}] val:{item.DataValue} offset:{offset.X},{offset.Y}");
+				item.Element.Offset = offset;
+			}
+		}
+		void LiveItem(int index, Series_ItemState state) {
+			state.Reindex(index);
+			UpdateLimits(index, state.DataValue, 0);
+			bool elementSelected = IsSelected(state);
+			if (elementSelected && state.Element == null) {
+				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
+				Entering(state);
+			}
+			else if (!elementSelected && state.Element != null) {
+				Exiting(state);
+			}
+			UpdateStyle(state);
+			UpdateOffset(state);
+		}
+		void EnteringItem(int index, Series_ItemState state) {
+			state.Reindex(index);
+			UpdateLimits(index, state.DataValue, 0);
+			bool elementSelected2 = IsSelected(state);
+			if (elementSelected2) {
+				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
+			}
+			UpdateStyle(state);
+			UpdateOffset(state);
+			Entering(state);
+		}
+		void ExitingItem(int index, Series_ItemState state) {
+			if (state.Element != null) {
+				Exiting(state);
+			}
+		}
+		#endregion
+		#region extension points
+		/// <summary>
+		/// Create some state or NULL.
+		/// </summary>
+		/// <param name="cx"></param>
+		/// <param name="index"></param>
+		/// <param name="item"></param>
+		/// <returns></returns>
+		protected virtual Series_ItemState CreateState(Compositor cx, int index, object item) {
+			if (ValueBinding.GetDouble(item, out double? value_val)) {
+				// short-circuit if it's NaN or NULL
+				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
+					return null;
+				}
+				var istate = new Series_ItemState(index, BarOffset, value_val.Value, null);
+				_trace.Verbose($"{Name}[{index}] state val:{istate.DataValue}");
+				return istate;
+			}
+			return null;
+		}
+		/// <summary>
+		/// Create shape with default style.
+		/// </summary>
+		/// <param name="cx"></param>
+		/// <param name="index"></param>
+		/// <param name="value"></param>
+		/// <returns></returns>
+		protected virtual CompositionShape CreateShape(Compositor cx, int index, double value) {
+			var (xx, yy) = MappingSupport.MapComponents(BarWidth, Math.Abs(value), CategoryAxis.Orientation, ValueAxis.Orientation);
+			var ctx = new ColumnElementContext(cx, index, BarOffset, value, xx, yy, CategoryAxis, ValueAxis);
+			var element = ElementFactory.CreateElement(ctx);
+			element.Comment = $"{Name}[{index}]";
+			_trace.Verbose($"{Name}[{index}] shape val:{value} dim:{xx:F2},{yy:F2}");
+			return element;
+		}
+		/// <summary>
+		/// Item is entering the Visual Tree.
+		/// </summary>
+		/// <param name="item"></param>
+		protected virtual void Entering(Series_ItemState item) {
+			if (item != null && item.Element != null) {
+				Container.Shapes.Add(item.Element);
+			}
+		}
+		/// <summary>
+		/// Item is exiting the Visual Tree.
+		/// </summary>
+		/// <param name="item"></param>
+		protected virtual void Exiting(Series_ItemState item) {
+			if (item != null && item.Element != null) {
+				Container.Shapes.Remove(item.Element);
+				item.ResetElement();
+			}
+		}
+		protected virtual void UpdateStyle(Series_ItemState item) {
+		}
+		protected virtual bool IsSelected(Series_ItemState item) {
+			return true;
+		}
+		#endregion
+		#region data operation extensions
+		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
+			if (Container == null) return;
+			// axes are not checked for by super class
+			if (CategoryAxis == null) return;
+			if (ValueAxis == null) return;
+			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
+			IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
+			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(slidingWindow.NewItems);
+			var itemstate = new List<ItemStateCore>();
+			int index = 0;
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			foreach ((ItemStatus st, Series_ItemState state) in exit.Concat(live).Concat(enter)) {
+				if (state == null) continue;
+				switch(st) {
+					case ItemStatus.Exit:
+						ExitingItem(index, state);
+						break;
+					case ItemStatus.Live:
+						LiveItem(index, state);
+						itemstate.Add(state);
+						break;
+					case ItemStatus.Enter:
+						EnteringItem(index, state);
+						itemstate.Add(state);
+						break;
+				}
+				index++;
+			}
+			ItemState = itemstate;
+		}
+		protected override void Reset(DataSource_Reset dsr) {
+			if (Container == null) return;
+			// axes are not checked for by super class
+			if (CategoryAxis == null) return;
+			if (ValueAxis == null) return;
+			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
+			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(dsr.Items);
+			var itemstate = new List<ItemStateCore>();
+			int index = 0;
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			foreach ((ItemStatus st, Series_ItemState state) in exit.Concat(enter)) {
+				if (state == null) continue;
+				switch(st) {
+					case ItemStatus.Exit:
+						ExitingItem(index, state);
+						break;
+					case ItemStatus.Live:
+						LiveItem(index, state);
+						itemstate.Add(state);
+						break;
+					case ItemStatus.Enter:
+						EnteringItem(index, state);
+						itemstate.Add(state);
+						break;
+				}
+				index++;
+			}
+			ItemState = itemstate;
+		}
+		protected override void UpdateModelTransform() {
 			if(CategoryAxis.Orientation == AxisOrientation.Horizontal) {
 				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum + 1, ValueAxis.Minimum, ValueAxis.Maximum);
 			}
@@ -117,102 +269,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			foreach(Series_ItemState item in ItemState) {
 				// apply new model transform
-				if (item.Element != null) {
+				if (item != null && item.Element != null) {
 					item.Element.TransformMatrix = Model;
 				}
 			}
 		}
 		#endregion
-		#region IDataSourceRenderSession<ColumnSeries_RenderState>
-		void IDataSourceRenderSession<Series_RenderState>.Preamble(Series_RenderState state, IChartRenderContext icrc) {
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-		}
-		void IDataSourceRenderSession<Series_RenderState>.Render(Series_RenderState state, int index, object item) {
-			if (ElementFactory == null) return;
-			if (ValueBinding == null) return;
-			// safe to conduct business
-			if (ValueBinding.GetDouble(item, out double? value_val)) {
-				state.ix = index;
-				// short-circuit if it's NaN or NULL
-				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
-					return;
-				}
-				var (xx, yy) = MappingSupport.MapComponents(BarWidth, Math.Abs(value_val.Value), CategoryAxis.Orientation, ValueAxis.Orientation);
-				var ctx = new ColumnElementContext(state.container.Compositor, index, BarOffset, value_val.Value, xx, yy, CategoryAxis, ValueAxis);
-				var element = ElementFactory.CreateElement(ctx);
-				element.Comment = $"{Name}[{index}]";
-				var istate = new Series_ItemState(index, BarOffset, value_val.Value, element);
-				var offset = istate.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
-				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2} offset:{offset.X},{offset.Y}");
-				element.Offset = offset;
-				state.Add(istate, element);
-				UpdateLimits(index, value_val.Value, 0);
-			}
-		}
-		void IDataSourceRenderSession<Series_RenderState>.RenderComplete(Series_RenderState state) {
-			// broadcast series extents
-			var msgcx = new Series_Extents(Name, DataSourceName, CategoryAxisName, Component1Minimum, Component1Maximum);
-			var msgvx = new Series_Extents(Name, DataSourceName, ValueAxisName, Component2Minimum, Component2Maximum);
-			state.bus.Consume(msgcx);
-			state.bus.Consume(msgvx);
-		}
-		void IDataSourceRenderSession<Series_RenderState>.Postamble(Series_RenderState state) {
-			// install elements
-			Layer.Use(sv => {
-				sv.Shapes.Clear();
-				sv.Shapes.Add(state.container);
-			});
-			ItemState = state.itemstate;
-		}
-		#endregion
 		#region handlers
-		public void Consume(DataSource_RenderStart message) {
-			if (message.Name != DataSourceName) return;
-			if (message.ExpectedItemType == null) return;
-			ValueBinding = Binding.For(message.ExpectedItemType, ValueMemberName);
-			if (!string.IsNullOrEmpty(LabelMemberName)) {
-				LabelBinding = Binding.For(message.ExpectedItemType, LabelMemberName);
-			}
-			else {
-				LabelBinding = ValueBinding;
-			}
-			if (ValueBinding == null) return;
-			message.Register(new Series_RenderSession(this, new Series_RenderState(new List<ItemStateCore>(), message.Bus)));
-		}
-		/// <summary>
-		/// Axis extents participate in the Model transform.
-		/// </summary>
-		/// <param name="message"></param>
-		public void Consume(Axis_Extents message) {
-			if (message.AxisName == CategoryAxisName) {
-				CategoryAxis = message;
-				if (double.IsNaN(CategoryAxis.Minimum) || double.IsNaN(CategoryAxis.Maximum)) return;
-				UpdateModelTransform();
-			}
-			else if(message.AxisName == ValueAxisName) {
-				ValueAxis = message;
-				if (double.IsNaN(ValueAxis.Minimum) || double.IsNaN(ValueAxis.Maximum)) return;
-				UpdateModelTransform();
-			}
-		}
 		/// <summary>
 		/// Render area participates in the Projection transform.
 		/// </summary>
 		/// <param name="message"></param>
-		public void Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
 			if (CategoryAxis == null || ValueAxis == null) return;
 			if (ItemState.Count == 0) return;
+			if (Container == null) return;
 			var rctx = message.ContextFor(this);
 			var xaxis = CategoryAxis.Orientation == AxisOrientation.Horizontal ? CategoryAxis.Reversed : ValueAxis.Reversed;
 			var yaxis = CategoryAxis.Orientation == AxisOrientation.Vertical ? CategoryAxis.Reversed : ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, rctx.SeriesArea);
-			Layer.Use(sv => {
-				foreach (var shx in sv.Shapes) {
-					shx.TransformMatrix = proj;
-				}
-			});
+			Container.TransformMatrix = proj;
 		}
 		#endregion
 		#region IRequireEnterLeave
@@ -223,11 +300,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (ElementFactory == null) {
 				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ElementFactory)}' was not set", new[] { nameof(ElementFactory) }));
 			}
-			Layer = icelc.CreateCompositionLayer();
+			Compositor compositor = Window.Current.Compositor;
+			Container = compositor.CreateContainerShape();
+			Container.Comment = $"container_{Name}";
+			Layer = icelc.CreateCompositionLayer(Container);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName} {ValueAxis} c:{CategoryAxisName} {CategoryAxis} d:{DataSourceName}");
 		}
 		public void Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
+			Container = null;
 			icelc.DeleteCompositionLayer(Layer);
 			Layer = null;
 		}
