@@ -1,4 +1,6 @@
 ﻿using eScape.Host;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using Windows.UI.Xaml.Controls;
 
@@ -165,7 +167,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <summary>
 	/// Send on EB in response to <see cref="Phase_AxisExtents"/>.
 	/// </summary>
-	public sealed class Axis_Extents {
+	public class Axis_Extents {
 		public readonly string AxisName;
 		/// <summary>
 		/// MAY be <see cref="double.NaN"/>.
@@ -189,6 +191,15 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 			Range = double.IsNaN(minimum) || double.IsNaN(maximum) ? double.NaN : maximum - minimum;
 		}
 		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
+	}
+	/// <summary>
+	/// Axis with tick values, e.g. a value axis.
+	/// </summary>
+	public sealed class Axis_Extents_TickValues : Axis_Extents {
+		public readonly ImmutableArray<TickState> TickValues;
+		public Axis_Extents_TickValues(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed, ImmutableArray<TickState> tvs) :base(axisName, minimum, maximum, axisSide, axisType, reversed) {
+			TickValues = tvs;
+		}
 	}
 	#endregion
 	#region CommandPort
