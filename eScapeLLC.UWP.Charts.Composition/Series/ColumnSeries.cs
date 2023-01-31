@@ -197,6 +197,34 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected virtual bool IsSelected(Series_ItemState item) {
 			return true;
 		}
+		/// <summary>
+		/// Generic processing of the exit/live/enter items.
+		/// </summary>
+		/// <param name="list">Instruction list.</param>
+		/// <param name="itemstate">Output list.</param>
+		protected virtual void ProcessList(IEnumerable<(ItemStatus st, Series_ItemState state)> list, List<ItemStateCore> itemstate) {
+			int index = 0;
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			foreach ((ItemStatus st, Series_ItemState state) in list) {
+				if (state == null) continue;
+				switch (st) {
+					case ItemStatus.Exit:
+						ExitingItem(index, state);
+						break;
+					case ItemStatus.Live:
+						LiveItem(index, state);
+						itemstate.Add(state);
+						break;
+					case ItemStatus.Enter:
+						EnteringItem(index, state);
+						itemstate.Add(state);
+						break;
+				}
+				index++;
+			}
+			UpdateLimits(index);
+		}
 		#endregion
 		#region data operation extensions
 		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
@@ -208,26 +236,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(slidingWindow.NewItems);
 			var itemstate = new List<ItemStateCore>();
-			int index = 0;
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-			foreach ((ItemStatus st, Series_ItemState state) in exit.Concat(live).Concat(enter)) {
-				if (state == null) continue;
-				switch(st) {
-					case ItemStatus.Exit:
-						ExitingItem(index, state);
-						break;
-					case ItemStatus.Live:
-						LiveItem(index, state);
-						itemstate.Add(state);
-						break;
-					case ItemStatus.Enter:
-						EnteringItem(index, state);
-						itemstate.Add(state);
-						break;
-				}
-				index++;
-			}
+			ProcessList(exit.Concat(live).Concat(enter), itemstate);
 			ItemState = itemstate;
 		}
 		protected override void Reset(DataSource_Reset dsr) {
@@ -238,34 +247,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(dsr.Items);
 			var itemstate = new List<ItemStateCore>();
-			int index = 0;
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-			foreach ((ItemStatus st, Series_ItemState state) in exit.Concat(enter)) {
-				if (state == null) continue;
-				switch(st) {
-					case ItemStatus.Exit:
-						ExitingItem(index, state);
-						break;
-					case ItemStatus.Live:
-						LiveItem(index, state);
-						itemstate.Add(state);
-						break;
-					case ItemStatus.Enter:
-						EnteringItem(index, state);
-						itemstate.Add(state);
-						break;
-				}
-				index++;
-			}
+			ProcessList(exit.Concat(enter), itemstate);
 			ItemState = itemstate;
 		}
 		protected override void UpdateModelTransform() {
 			if(CategoryAxis.Orientation == AxisOrientation.Horizontal) {
-				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum + 1, ValueAxis.Minimum, ValueAxis.Maximum);
+				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
 			}
 			else {
-				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum + 1);
+				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			}
 			foreach(Series_ItemState item in ItemState) {
 				// apply new model transform
