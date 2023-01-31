@@ -20,7 +20,7 @@ namespace eScapeLLC.UWP.Charts {
 		/// Hit the <see cref="PropertyChanged"/> event.
 		/// </summary>
 		/// <param name="prop">Property that changed.</param>
-		protected void Changed(String prop) {
+		protected void Changed(string prop) {
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
 		}
 		#endregion
@@ -49,13 +49,13 @@ namespace eScapeLLC.UWP.Charts {
 	/// </summary>
 	public class TextShim : DataTemplateShim {
 		#region data
-		String _text;
+		string _text;
 		#endregion
 		#region properties
 		/// <summary>
 		/// Current text.
 		/// </summary>
-		public String Text { get { return _text; } set { _text = value; Changed(nameof(Text)); } }
+		public string Text { get { return _text; } set { _text = value; Changed(nameof(Text)); } }
 		#endregion
 	}
 	#endregion
