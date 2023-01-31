@@ -2,18 +2,13 @@
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Linq;
-using System.ServiceModel.Channels;
 using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-
-// The Templated Control item template is documented at https://go.microsoft.com/fwlink/?LinkId=234235
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region ChartDataSourceCollection
@@ -142,7 +137,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region Chart
 	[TemplatePart(Name = PART_Canvas, Type = typeof(Canvas))]
-	public sealed class Chart : Control, DataSource.IForwardCommandPort, ChartComponent.IForwardCommandPort {
+	public sealed class Chart : Control, IForwardCommandPort<DataSource_RefreshRequest>, IForwardCommandPort<Component_RefreshRequest> {
 		static readonly LogTools.Flag _trace = LogTools.Add("Chart", LogTools.Level.Error);
 		/// <summary>
 		/// Control template part: canvas.
@@ -266,7 +261,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		private void DataSources_CollectionChanged(object sender, NotifyCollectionChangedEventArgs nccea) {
 			_trace.Verbose($"DataSourcesChanged {nccea.Action}");
-			var ops = new List<DataSource_Operation>();
+			var ops = new List<CommandPort_Operation>();
 			try {
 				if (nccea.OldItems != null) {
 					foreach (DataSource ds in nccea.OldItems) {
@@ -378,10 +373,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// SETs <see cref="LayoutState.Type"/> to FALSE.
 		/// </summary>
 		/// <param name="ls">Layout state.</param>
-		void FullLayout(LayoutState ls, List<DataSource_Operation> dso) {
+		/// <param name="cpos">List of operations to perform.</param>
+		void FullLayout(LayoutState ls, List<CommandPort_Operation> cpos) {
 			ls.Type = RenderType.Full;
 			ls.InitializeLayoutContext(Padding);
-			_trace.Verbose($"full starting {ls.LayoutRect} dso:{dso.Count}");
+			_trace.Verbose($"full starting {ls.LayoutRect} dso:{cpos.Count}");
 			// Phase I: reset axes
 			Bus.Consume(new Phase_InitializeAxes(Bus));
 			// Phase II: claim space (IRequireLayout)
@@ -390,67 +386,65 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
 			ls.Layout.FinalizeRects();
 			Bus.Consume(new Phase_LayoutComplete(ls));
-			// Phase III: data source operation(s)
-			foreach (var op in dso) {
+			// Phase III: operation(s)
+			foreach (var op in cpos) {
 				_trace.Verbose($"sending dso {op}");
-				Bus.Consume(new Phase_DataSourceOperation(op.Name, ls, Surface, Components, DataContext, op));
+				if (op is DataSource_Operation ds) {
+					Bus.Consume(new Phase_DataSourceOperation(ds.Name, ls, Surface, Components, DataContext, ds));
+				}
+				else if(op is Component_Operation co) {
+					Bus.Consume(new Phase_ComponentOperation(co.Component.Name, ls, Surface, Components, DataContext, co));
+				}
 			}
-			// Phase IVa: axes receive extents from components broadcast on the EB
+			// Phase IVa: axes receive extents from components broadcast on EB
 			Bus.Consume(new Phase_ComponentExtents(ls, Bus));
-			// Phase IVb: axes broadcast final extents on EB
+			// Phase IVb: components receive final extents from axes broadcast on EB
 			Bus.Consume(new Phase_AxisExtents(ls, Bus));
-			// Phase V: render axes (IRequireRender)
-			Bus.Consume(new Phase_RenderAxes(ls, Surface, Components, DataContext));
+			// Phase V: render axes and decorations (IRequireRender)
+			Bus.Consume(new Phase_ModelComplete(ls, Surface, Components, DataContext));
 			// Phase VI: configure all transforms
 			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
 		}
 		/// <summary>
 		/// Top-level render components.
 		/// </summary>
-		/// <param name="message"></param>
-		void RenderComponents(LayoutState ls, List<DataSource_Operation> dso) {
-			_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height} dso:{dso?.Count}");
+		/// <param name="ls">Current state.</param>
+		/// <param name="cpos">NULL for TransformsOnly or a list of operations.</param>
+		void RenderComponents(LayoutState ls, List<CommandPort_Operation> cpos) {
+			_trace.Verbose($"render-components {ls.Dimensions.Width}x{ls.Dimensions.Height} dso:{cpos?.Count}");
 			if (ls.Dimensions.Width == 0 || ls.Dimensions.Height == 0) {
 				return;
 			}
-			if (dso != null) {
-				FullLayout(ls, dso);
+			if (cpos != null) {
+				FullLayout(ls, cpos);
 			}
 			else {
 				TransformsLayout(ls);
 			}
 		}
 		#endregion
-		#region *.IForwardCommandPort
-		void DataSource.IForwardCommandPort.Forward(DataSource_RefreshRequest dso) {
-			_trace.Verbose($"refresh-request-ds '{dso.Name}' {dso.Operation}");
+		#region IForwardCommandPort<>
+		void ForwardCommon(List<CommandPort_Operation> ops) {
 			var did = Queue.TryEnqueue(() => {
 				if (Surface == null) return;
 				try {
-					RenderComponents(CurrentLayout, new List<DataSource_Operation>() { dso.Operation });
+					RenderComponents(CurrentLayout, ops);
 				}
 				catch (Exception ex) {
-					_trace.Error($"{Name} DataSource_RefreshRequest.unhandled: {ex}");
+					_trace.Error($"{Name} ForwardCommon.unhandled: {ex}");
 				}
 			});
 			if (!did) {
-				_trace.Fatal("man it didn't make it");
+				_trace.Fatal("Forward: failed to enqueue");
 			}
 		}
-		void ChartComponent.IForwardCommandPort.Forward(Component_RefreshRequest dso) {
-			_trace.Verbose($"refresh-request-cc '{dso.Name}' {dso.Operation}");
-			var did = Queue.TryEnqueue(() => {
-				if (Surface == null) return;
-				try {
-					//RenderComponents(CurrentLayout, new List<Component_Operation>() { dso.Operation });
-				}
-				catch (Exception ex) {
-					_trace.Error($"{Name} DataSource_RefreshRequest.unhandled: {ex}");
-				}
-			});
-			if (!did) {
-				_trace.Fatal("man it didn't make it");
-			}
+		void IForwardCommandPort<DataSource_RefreshRequest>.Forward(DataSource_RefreshRequest dsrr) {
+			_trace.Verbose($"forward-ds '{dsrr.Name}' {dsrr.Operation}");
+			ForwardCommon(new List<CommandPort_Operation>() { dsrr.Operation });
+		}
+		void IForwardCommandPort<Component_RefreshRequest>.Forward(Component_RefreshRequest crr) {
+			_trace.Verbose($"forward-cc '{crr.Name}' {crr.Operation}");
+			ForwardCommon(new List<CommandPort_Operation>() { crr.Operation });
 		}
 		#endregion
 	}
