@@ -1,6 +1,7 @@
 ﻿using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
+using System.Collections.Generic;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
 
@@ -45,7 +46,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="path">Component's (source) property path.</param>
 		/// <param name="target">Target DO.</param>
 		/// <param name="dp">FE's (target) DP.</param>
-		public static void BindTo(object source, String path, DependencyObject target, DependencyProperty dp) {
+		public static void BindTo(object source, string path, DependencyObject target, DependencyProperty dp) {
 			Windows.UI.Xaml.Data.Binding bx = new Windows.UI.Xaml.Data.Binding() {
 				Path = new PropertyPath(path),
 				Source = source,
@@ -53,6 +54,31 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			};
 			target.ClearValue(dp);
 			BindingOperations.SetBinding(target, dp, bx);
+		}
+		/// <summary>
+		/// Generic processing of the exit/live/enter items.
+		/// </summary>
+		/// <param name="list">Instruction list.</param>
+		/// <param name="itemstate">Output list. Accumulates Live and Enter items.</param>
+		public static void ProcessList<S>(IEnumerable<(ItemStatus st, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
+			int index = 0;
+			foreach ((ItemStatus st, S state) in list) {
+				if (state == null) continue;
+				switch (st) {
+					case ItemStatus.Exit:
+						ilc.ExitingItem(index, state);
+						break;
+					case ItemStatus.Live:
+						ilc.LiveItem(index, state);
+						itemstate.Add(state);
+						break;
+					case ItemStatus.Enter:
+						ilc.EnteringItem(index, state);
+						itemstate.Add(state);
+						break;
+				}
+				index++;
+			}
 		}
 		#endregion
 	}
