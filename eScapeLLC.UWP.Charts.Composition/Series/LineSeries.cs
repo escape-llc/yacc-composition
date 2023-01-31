@@ -68,6 +68,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				UpdateLimits(ix, state.DataValue, 0);
 				// no geometry updates
 			}
+			UpdateLimits(itemstate.Count);
 			Container.Shapes.Clear();
 			Container.Shapes.Add(shape);
 			ItemState = itemstate;
@@ -135,10 +136,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		protected override void UpdateModelTransform() {
 			if (CategoryAxis.Orientation == AxisOrientation.Horizontal) {
-				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum + 1, ValueAxis.Minimum, ValueAxis.Maximum);
+				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
 			}
 			else {
-				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum + 1);
+				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			}
 			Layer.Use(sv => {
 				if(sv.Shapes.Count > 0 && sv.Shapes[0] is CompositionContainerShape ccs) {
