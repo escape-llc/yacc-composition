@@ -1,9 +1,5 @@
 ﻿using eScape.Host;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using Windows.UI.Xaml.Controls;
 
 namespace eScapeLLC.UWP.Charts.Composition.Events {
@@ -17,7 +13,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// </summary>
 		readonly IProvideConsume Bus;
 		public Phase_InitializeAxes(IProvideConsume eb) { Bus = eb; }
-		public void Reply(Axis_Extents axis) { Bus.Consume(axis); }
+		public void Register(Axis_Extents axis) { Bus.Consume(axis); }
 	}
 	/// <summary>
 	/// Instruct components to claim space.  Components using the Series Area MUST NOT claim space.
@@ -45,17 +41,6 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Instruct axes to broadcast extents.
-	/// </summary>
-	public sealed class Phase_AxisExtents : PhaseWithLayoutState {
-		/// <summary>
-		/// Use to send <see cref="Axis_Extents"/> events.
-		/// </summary>
-		readonly IProvideConsume Bus;
-		public Phase_AxisExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
-		public void Register(Axis_Extents axis) { Bus.Consume(axis); }
-	}
-	/// <summary>
 	/// Instruct all components to broadcast extents.
 	/// </summary>
 	public sealed class Phase_ComponentExtents : PhaseWithLayoutState {
@@ -65,6 +50,17 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		readonly IProvideConsume Bus;
 		public Phase_ComponentExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
 		public void Register(Component_Extents cc) { Bus.Consume(cc); }
+	}
+	/// <summary>
+	/// Instruct all axes to broadcast extents.
+	/// </summary>
+	public sealed class Phase_AxisExtents : PhaseWithLayoutState {
+		/// <summary>
+		/// Use to send <see cref="Axis_Extents"/> events.
+		/// </summary>
+		readonly IProvideConsume Bus;
+		public Phase_AxisExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
+		public void Register(Axis_Extents axis) { Bus.Consume(axis); }
 	}
 	/// <summary>
 	/// Core for phases with render context.
@@ -99,10 +95,25 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Instruct axis components to render (after limits are established).
+	/// Change initiated by a non-DSRP component.
 	/// </summary>
-	public sealed class Phase_RenderAxes : PhaseWithRenderContext {
-		public Phase_RenderAxes(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
+	public sealed class Phase_ComponentOperation : PhaseWithRenderContext {
+		public readonly string Name;
+		public readonly Component_Operation Operation;
+		public Phase_ComponentOperation(
+			string name,
+			LayoutState ls, Canvas surface,
+			ObservableCollection<ChartComponent> components,
+			object dataContext, Component_Operation operation) : base(ls, surface, components, dataContext) {
+			Name = name;
+			Operation = operation;
+		}
+	}
+	/// <summary>
+	/// Notify non-DSRP components (axes, decorations) to render after extents are established.
+	/// </summary>
+	public sealed class Phase_ModelComplete : PhaseWithRenderContext {
+		public Phase_ModelComplete(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
 	}
 	/// <summary>
 	/// Instruct components to adjust transforms to new viewport.
@@ -111,9 +122,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public Phase_RenderTransforms(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
 	}
 	#endregion
-	#region Series events
+	#region Component events
 	/// <summary>
-	/// Send on EB when a component has update to its extents.
+	/// Send on EB in response to <see cref="Phase_ComponentExtents"/>.
 	/// </summary>
 	public sealed class Component_Extents {
 		/// <summary>
@@ -138,10 +149,21 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 			Maximum = maximum;
 		}
 	}
+	/// <summary>
+	/// Specific component is requesting refresh via command port.
+	/// </summary>
+	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
+		public readonly string Name;
+		public readonly Component_Operation Operation;
+		public Component_RefreshRequest(Component_Operation op) {
+			Operation = op;
+			Name = op.Component.Name;
+		}
+	}
 	#endregion
 	#region Axis events
 	/// <summary>
-	/// Send on EB when an axis has update to its extents.
+	/// Send on EB in response to <see cref="Phase_AxisExtents"/>.
 	/// </summary>
 	public sealed class Axis_Extents {
 		public readonly string AxisName;
@@ -170,20 +192,19 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	}
 	#endregion
 	#region CommandPort
-	public abstract class CommandPort_RefreshRequest { }
-	#endregion
-	#region Component events
 	/// <summary>
-	/// Specific component is requesting refresh via command port.
+	/// Ability to accept operations forwarded from command port.
 	/// </summary>
-	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
-		public readonly string Name;
-		public readonly Component_Operation Operation;
-		public Component_RefreshRequest(Component_Operation op) {
-			Operation = op;
-			Name = op.Component.Name;
-		}
+	/// <typeparam name="C">Command type.</typeparam>
+	public interface IForwardCommandPort<C> where C: CommandPort_RefreshRequest {
+		/// <summary>
+		/// Accept forwarded message.
+		/// </summary>
+		/// <param name="msg">message.</param>
+		void Forward(C msg);
 	}
+	public abstract class CommandPort_Operation { }
+	public abstract class CommandPort_RefreshRequest { }
 	#endregion
 	#region DataSource events
 	/// <summary>
