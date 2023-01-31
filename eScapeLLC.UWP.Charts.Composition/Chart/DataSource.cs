@@ -3,12 +3,11 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public abstract class DataSource_Operation {
+	public abstract class DataSource_Operation : CommandPort_Operation {
 		public string Name { get; internal set; }
 		protected DataSource_Operation() {
 		}
@@ -57,11 +56,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
 		static LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
-		#region inner
-		public interface IForwardCommandPort {
-			void Forward(DataSource_RefreshRequest dso);
-		}
-		#endregion
 		#region DPs
 		/// <summary>
 		/// Identifies <see cref="CommandPort"/> DP.
@@ -92,7 +86,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Used for unsolicited messages.
 		/// </summary>
-		public IForwardCommandPort Forward { get; set; }
+		public IForwardCommandPort<DataSource_RefreshRequest> Forward { get; set; }
 		#endregion
 		/// <summary>
 		/// Mark as dirty and fire refresh request event.
