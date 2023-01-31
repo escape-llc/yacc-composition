@@ -86,7 +86,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region ValueAxis
 	public class ValueAxis : AxisCommon, IChartAxis, IRequireEnterLeave,
 		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
-		IConsumer<Phase_RenderAxes>, IConsumer<Phase_RenderTransforms> {
+		IConsumer<Phase_ModelComplete>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueAxis", LogTools.Level.Error);
 		#region inner
 		abstract class Axis_State : ItemStateCore {
@@ -213,7 +213,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Reply(msg);
+			message.Register(msg);
 		}
 		(double min, double max) CalculateLimits() {
 			double min = double.NaN;
@@ -250,7 +250,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var space = AxisMargin + MinWidth;
 			message.Context.ClaimSpace(this, Side, space);
 		}
-		void IConsumer<Phase_RenderAxes>.Consume(Phase_RenderAxes message) {
+		void IConsumer<Phase_ModelComplete>.Consume(Phase_ModelComplete message) {
 			if(double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var icrc = message.ContextFor(this);
 			var padding = 2 * AxisMargin;
