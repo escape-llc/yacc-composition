@@ -106,13 +106,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected (Matrix3x2 model, Matrix3x2 proj) ProjectionFor(Rect area, bool reverse) {
 			switch (Side) {
 				case Side.Bottom:
-					return MatrixSupport.AxisBottom(area, Minimum, Maximum + 1, !reverse);
+					return MatrixSupport.AxisBottom(area, Minimum, Maximum, !reverse);
 				case Side.Left:
-					return MatrixSupport.AxisLeft(area, Minimum, Maximum + 1, !reverse);
+					return MatrixSupport.AxisLeft(area, Minimum, Maximum, !reverse);
 				case Side.Right:
-					return MatrixSupport.AxisRight(area, Minimum, Maximum + 1, !reverse);
+					return MatrixSupport.AxisRight(area, Minimum, Maximum, !reverse);
 				case Side.Top:
-					return MatrixSupport.AxisTop(area, Minimum, Maximum + 1, !reverse);
+					return MatrixSupport.AxisTop(area, Minimum, Maximum, !reverse);
 			}
 			throw new InvalidOperationException($"cannot determine projection for {Side}");
 		}
