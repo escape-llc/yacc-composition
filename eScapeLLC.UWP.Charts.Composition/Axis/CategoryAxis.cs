@@ -87,7 +87,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					Layer.Remove(item.element);
 				}
 			}
-			ResetLimits();
 			// reset limits
 			foreach (Axis_ItemState item in enter) {
 				if (item != null && item.element != null) {
@@ -111,7 +110,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
-			message.Reply(msg);
+			message.Register(msg);
 		}
 		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
 			if (message.Operation.Name != DataSourceName) return;
