@@ -3,22 +3,24 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
-using System.Security.Cryptography;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	public interface IListController<S> where S : ItemStateCore {
+		void EnteringItem(int index, S state);
+		void ExitingItem(int index, S state);
+		void LiveItem(int index, S state);
+	}
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
 	public class ColumnSeries : CategoryValueSeries,
-		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
+		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IListController<ColumnSeries.Series_ItemState>,
 		IConsumer<Phase_RenderTransforms> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
@@ -107,7 +109,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				item.Element.Offset = offset;
 			}
 		}
-		void LiveItem(int index, Series_ItemState state) {
+		#endregion
+		#region IListController<>
+		void IListController<Series_ItemState>.LiveItem(int index, Series_ItemState state) {
 			state.Reindex(index);
 			UpdateLimits(index, state.DataValue, 0);
 			bool elementSelected = IsSelected(state);
@@ -121,7 +125,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			UpdateStyle(state);
 			UpdateOffset(state);
 		}
-		void EnteringItem(int index, Series_ItemState state) {
+		void IListController<Series_ItemState>.EnteringItem(int index, Series_ItemState state) {
 			state.Reindex(index);
 			UpdateLimits(index, state.DataValue, 0);
 			bool elementSelected2 = IsSelected(state);
@@ -132,7 +136,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			UpdateOffset(state);
 			Entering(state);
 		}
-		void ExitingItem(int index, Series_ItemState state) {
+		void IListController<Series_ItemState>.ExitingItem(int index, Series_ItemState state) {
 			if (state.Element != null) {
 				Exiting(state);
 			}
@@ -197,34 +201,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected virtual bool IsSelected(Series_ItemState item) {
 			return true;
 		}
-		/// <summary>
-		/// Generic processing of the exit/live/enter items.
-		/// </summary>
-		/// <param name="list">Instruction list.</param>
-		/// <param name="itemstate">Output list.</param>
-		protected virtual void ProcessList(IEnumerable<(ItemStatus st, Series_ItemState state)> list, List<ItemStateCore> itemstate) {
-			int index = 0;
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-			foreach ((ItemStatus st, Series_ItemState state) in list) {
-				if (state == null) continue;
-				switch (st) {
-					case ItemStatus.Exit:
-						ExitingItem(index, state);
-						break;
-					case ItemStatus.Live:
-						LiveItem(index, state);
-						itemstate.Add(state);
-						break;
-					case ItemStatus.Enter:
-						EnteringItem(index, state);
-						itemstate.Add(state);
-						break;
-				}
-				index++;
-			}
-			UpdateLimits(index);
-		}
 		#endregion
 		#region data operation extensions
 		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
@@ -236,7 +212,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(slidingWindow.NewItems);
 			var itemstate = new List<ItemStateCore>();
-			ProcessList(exit.Concat(live).Concat(enter), itemstate);
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			ProcessList<Series_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
+			UpdateLimits(itemstate.Count);
 			ItemState = itemstate;
 		}
 		protected override void Reset(DataSource_Reset dsr) {
@@ -247,7 +226,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(dsr.Items);
 			var itemstate = new List<ItemStateCore>();
-			ProcessList(exit.Concat(enter), itemstate);
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			ProcessList<Series_ItemState>(exit.Concat(enter), this, itemstate);
+			UpdateLimits(itemstate.Count);
 			ItemState = itemstate;
 		}
 		protected override void UpdateModelTransform() {
