@@ -11,6 +11,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Value extractor.
 	/// </summary>
 	public abstract class Binding {
+		public const string SELF = ".";
 		protected Binding() { }
 		/// <summary>
 		/// Return value if possible.
@@ -111,6 +112,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="name">Element name.</param>
 		/// <returns>New instance or NULL.</returns>
 		public static Binding For(Type ty, string name) {
+			if (SELF.Equals(name)) return new SelfBinding(ty);
 			var pi = ty.GetProperty(name, BindingFlags.Instance | BindingFlags.Public);
 			if(pi != null) {
 				return new PropertyInfoBinding(pi);
@@ -124,6 +126,25 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				return new MethodInfoBinding(mi);	
 			}
 			return null;
+		}
+	}
+	#endregion
+	#region SelfBinding
+	/// <summary>
+	/// Encode a RelativeSource=Self binding.
+	/// This binding IS NOT directly usable, as it does not specify a property name.
+	/// </summary>
+	public class SelfBinding : Binding {
+		readonly Type ty;
+		public SelfBinding(Type ty) { this.ty = ty; }
+		public override Type ValueType => ty;
+		protected override T? Get<T>(object instance) {
+			if (typeof(T).Equals(typeof(object)))
+				return instance as T?;
+			throw new NotImplementedException("SelfBinding.Get: Only responds to object type");
+		}
+		protected override string Get(object instance) {
+			return instance?.ToString();
 		}
 	}
 	#endregion
