@@ -3,6 +3,7 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
@@ -150,19 +151,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Whether to reverse the direction of the axis.
 		/// </summary>
 		public bool Reverse { get; set; }
+		/// <summary>
+		/// Alternate label format string.
+		/// </summary>
 		public string LabelFormatString { get; set; }
 		/// <summary>
 		/// The style to apply to labels.
 		/// </summary>
 		public Style LabelStyle { get { return (Style)GetValue(LabelStyleProperty); } set { SetValue(LabelStyleProperty, value); } }
-		/// <summary>
-		/// The layer to manage components.
-		/// </summary>
-		protected IChartLayer Layer { get; set; }
-		/// <summary>
-		/// List of active TextBlocks for labels.
-		/// </summary>
-		protected List<ItemStateCore> AxisLabels { get; set; }
 		/// <summary>
 		/// Converter to use as the element <see cref="FrameworkElement.Style"/> and <see cref="TextBlock.Text"/> selector.
 		/// These are already set to their "standard" values before this is called, so it MAY selectively opt out of setting them.
@@ -185,6 +181,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// If this is not set, then <see cref="TextBlock"/>s are used and <see cref="AxisCommon.LabelStyle"/> applied to them.
 		/// </summary>
 		public DataTemplate LabelTemplate { get { return (DataTemplate)GetValue(LabelTemplateProperty); } set { SetValue(LabelTemplateProperty, value); } }
+		/// <summary>
+		/// The layer to manage components.
+		/// </summary>
+		protected IChartLayer Layer { get; set; }
+		/// <summary>
+		/// List of active TextBlocks for labels.
+		/// </summary>
+		protected List<ItemStateCore> AxisLabels { get; set; }
 		protected Binding LabelBinding { get; set; }
 		protected Dictionary<string, Component_Extents> ExtentMap { get; set; } = new Dictionary<string, Component_Extents>();
 		#endregion
@@ -240,10 +244,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					Extents(kvp.Value);
 				}
 			}
-			//var (min, max) = CalculateLimits();
-			//Minimum = double.IsNaN(min) ? LimitMinimum : min;
-			//Maximum = double.IsNaN(max) ? LimitMaximum : max;
-			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
+			var tc = new TickCalculator(Minimum, Maximum);
+			var tix = tc.GetTicks().OrderBy(xx => xx.Index).ToImmutableArray();
+			var msg = new Axis_Extents_TickValues(Name, Minimum, Maximum, Side, Type, Reverse, tix);
 			message.Register(msg);
 		}
 		void IConsumer<Phase_Layout>.Consume(Phase_Layout message) {
