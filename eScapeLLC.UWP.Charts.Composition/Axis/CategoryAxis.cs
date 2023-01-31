@@ -4,15 +4,18 @@ using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Numerics;
-using System.Security.Cryptography;
-using Windows.Foundation;
+using System.Reflection;
+using System.Xml.Linq;
+using Windows.UI.Composition;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon,
-		IRequireEnterLeave, IChartAxis,
+		IRequireEnterLeave, IChartAxis, IListController<CategoryAxis.Axis_ItemState>,
 		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
 		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
@@ -22,10 +25,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		class Axis_ItemState : ItemStateCore {
-			internal FrameworkElement element;
-			internal string label;
+			internal FrameworkElement Element;
+			internal TextShim label;
 			public Axis_ItemState(int index) : base(index) { }
+			public void Reindex(int idx) { Index = idx; }
+			public void ResetElement() { Element = null; }
+			public void SetElement(FrameworkElement cs) { Element = cs; }
 		}
+		#endregion
+		#region DPs
+		/// <summary>
+		/// Identifies <see cref="LabelTemplate"/> dependency property.
+		/// </summary>
+		public static readonly DependencyProperty LabelTemplateProperty = DependencyProperty.Register(
+			nameof(LabelTemplate), typeof(DataTemplate), typeof(CategoryAxis), new PropertyMetadata(null)
+		);
+		/// <summary>
+		/// Identifies <see cref="LabelStyle"/> dependency property.
+		/// </summary>
+		public static readonly DependencyProperty LabelStyleProperty = DependencyProperty.Register(
+			nameof(LabelStyle), typeof(Style), typeof(CategoryAxis), new PropertyMetadata(null)
+		);
 		#endregion
 		#region properties
 		/// <summary>
@@ -37,9 +57,35 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public bool Reverse { get; set; }
 		/// <summary>
-		/// Select the label value.
+		/// Select the label value.  TODO Use "." to bind to the entire data object in <see cref="ObjectShim"/>.
 		/// </summary>
 		public string LabelMemberPath { get; set; }
+		/// <summary>
+		/// The style to apply to labels.
+		/// </summary>
+		public Style LabelStyle { get { return (Style)GetValue(LabelStyleProperty); } set { SetValue(LabelStyleProperty, value); } }
+		/// <summary>
+		/// If set, the template to use for labels.
+		/// This overrides <see cref="AxisCommon.LabelStyle"/>.
+		/// If this is not set, then <see cref="TextBlock"/>s are used and <see cref="AxisCommon.LabelStyle"/> applied to them.
+		/// </summary>
+		public DataTemplate LabelTemplate { get { return (DataTemplate)GetValue(LabelTemplateProperty); } set { SetValue(LabelTemplateProperty, value); } }
+		/// <summary>
+		/// Converter to use as the element <see cref="FrameworkElement.Style"/> and <see cref="TextBlock.Text"/> selector.
+		/// These are already set to their "standard" values before this is called, so it MAY selectively opt out of setting them.
+		/// <para/>
+		/// The <see cref="IValueConverter.Convert"/> targetType parameter is used to determine which value is requested.
+		/// <para/>
+		/// Uses <see cref="Tuple{Style,String}"/> for style/label override.  Return a new instance/NULL to opt in/out.
+		/// </summary>
+		public IValueConverter LabelFormatter { get; set; }
+		/// <summary>
+		/// Converter to use as the label creation selector.
+		/// If it returns True, the label is created.
+		/// The <see cref="IValueConverter.Convert"/> targetType parameter is <see cref="bool"/>.
+		/// SHOULD return a <see cref="bool"/> but MAY return NULL/not-NULL.
+		/// </summary>
+		public IValueConverter LabelSelector { get; set; }
 		/// <summary>
 		/// The layer to manage components.
 		/// </summary>
@@ -66,36 +112,100 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Layer = null;
 		}
 		#endregion
+		#region IListController<CategoryAxis.Axis_ItemState>
+		bool IsSelected(Axis_ItemState item) {
+			if (LabelSelector != null) {
+				// ask the label selector
+				var ox = LabelSelector.Convert(null /*TODO FIX*/, typeof(bool), null, System.Globalization.CultureInfo.CurrentUICulture.Name);
+				if (ox is bool bx) {
+					return bx;
+				}
+				else {
+					return ox != null;
+				}
+			}
+			return true;
+		}
+		void UpdateStyle(Axis_ItemState item) {
+			if (item == null || item.Element == null) return;
+			// restore binding if we are using a LabelFormatter
+			if (LabelFormatter != null && LabelStyle != null) {
+				BindTo(this, nameof(LabelStyle), item.Element, FrameworkElement.StyleProperty);
+			}
+			//var text = tick.Value.ToString(string.IsNullOrEmpty(LabelFormatString) ? "G" : LabelFormatString);
+			if (LabelFormatter != null) {
+				// call for Style, String override
+				var format = LabelFormatter.Convert(null /*TODO FIX*/, typeof(Tuple<Style, string>), null, System.Globalization.CultureInfo.CurrentUICulture.Name);
+				if (format is Tuple<Style, string> ovx) {
+					if (ovx.Item1 != null) {
+						item.Element.Style = ovx.Item1;
+					}
+					if (ovx.Item2 != null) {
+						item.label.Text = ovx.Item2;
+					}
+				}
+			}
+		}
+		void Entering(Axis_ItemState item) {
+			if (item != null && item.Element != null) {
+				Layer.Add(item.Element);
+			}
+		}
+		void Exiting(Axis_ItemState item) {
+			if (item != null && item.Element != null) {
+				Layer.Remove(item.Element);
+				item.ResetElement();
+			}
+		}
+		void IListController<Axis_ItemState>.EnteringItem(int index, Axis_ItemState item) {
+			item.Reindex(index);
+			bool elementSelected2 = IsSelected(item);
+			if (elementSelected2) {
+				item.SetElement(CreateElement(item.label));
+			}
+			UpdateStyle(item);
+			Entering(item);
+		}
+		void IListController<Axis_ItemState>.LiveItem(int index, Axis_ItemState item) {
+			item.Reindex(index);
+			bool elementSelected = IsSelected(item);
+			if (elementSelected && item.Element == null) {
+				item.SetElement(CreateElement(item.label));
+				Entering(item);
+			}
+			else if (!elementSelected && item.Element != null) {
+				Exiting(item);
+			}
+			UpdateStyle(item);
+		}
+		void IListController<Axis_ItemState>.ExitingItem(int index, Axis_ItemState item) {
+			if (item.Element != null) {
+				Exiting(item);
+			}
+		}
+		#endregion
 		#region virtual data source handlers
+		IEnumerable<(ItemStatus st, Axis_ItemState state)> Entering(System.Collections.IList items) {
+			for (int ix = 0; ix < items.Count; ix++) {
+				var state = CreateState(ix, items[ix]);
+				yield return (ItemStatus.Enter, state);
+			}
+		}
 		protected virtual void Reset(DataSource_Reset dsr) {
-			var exit = new List<ItemStateCore>();
-			var enter = new List<ItemStateCore>();
-			if (AxisLabels.Count > 0) {
-				// exit
-				exit.AddRange(AxisLabels);
-			}
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(dsr.Items);
 			var itemstate = new List<ItemStateCore>();
-			for (int ix = 0; ix < dsr.Items.Count; ix++) {
-				var state = CreateState(ix, dsr.Items[ix]);
-				itemstate.Add(state);
-				if (state != null) {
-					enter.Add(state);
-				}
-			}
-			foreach (Axis_ItemState item in exit) {
-				if (item != null && item.element != null) {
-					Layer.Remove(item.element);
-				}
-			}
-			// reset limits
-			foreach (Axis_ItemState item in enter) {
-				if (item != null && item.element != null) {
-					Layer.Add(item.element);
-				}
-			}
+			ProcessList<Axis_ItemState>(exit.Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
-		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) { }
+		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(slidingWindow.NewItems);
+			var itemstate = new List<ItemStateCore>();
+			ProcessList<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
+			AxisLabels = itemstate;
+		}
 		protected virtual void Add(DataSource_Add add) { }
 		#endregion
 		#region handlers
@@ -146,11 +256,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var matx = Matrix3x2.Multiply(pmatrix.model, pmatrix.proj);
 			double dx = 0, dy = 0;
 			foreach (Axis_ItemState state in AxisLabels) {
-				if (state.element == null) continue;
+				if (state.Element == null) continue;
 				var point = new Vector2(state.Index + (Reverse ? 1 : 0), YOffSetFor());
 				var dc = Vector2.Transform(point, matx);
 				try {
-					state.element.Translation = new Vector3((float)(dc.X + dx), (float)(dc.Y + dy), 0);
+					state.Element.Translation = new Vector3((float)(dc.X + dx), (float)(dc.Y + dy), 0);
 				}
 				catch (Exception) { //eat it
 				}
@@ -158,15 +268,37 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region helpers
-		FrameworkElement CreateElement(string text) {
-			var tb = new TextBlock() { Text = text, HorizontalAlignment = HorizontalAlignment.Left, HorizontalTextAlignment = TextAlignment.Left };
-			return tb;
+		FrameworkElement CreateElement(TextShim text) {
+			var fe = default(FrameworkElement);
+			if (LabelTemplate != null) {
+				fe = LabelTemplate.LoadContent() as FrameworkElement;
+			}
+			else {
+				fe = new TextBlock() {
+					HorizontalAlignment = HorizontalAlignment.Left,
+					HorizontalTextAlignment = TextAlignment.Left,
+					VerticalAlignment = VerticalAlignment.Center
+				};
+				ChartComponent.BindTo(text, nameof(TextShim.Text), fe, TextBlock.TextProperty);
+			}
+			if (LabelStyle != null) {
+				BindTo(this, nameof(LabelStyle), fe, FrameworkElement.StyleProperty);
+			}
+			fe.DataContext = text;
+			return fe;
 		}
 		Axis_ItemState CreateState(int index, object item) {
 			var istate = new Axis_ItemState(index);
-			if (LabelBinding.GetString(item, out string label) && !string.IsNullOrEmpty(label)) {
-				istate.label = label;
-				istate.element = CreateElement(label);
+			// set up label VM shim
+			if(LabelBinding is SelfBinding) {
+				istate.label = new ObjectShim() { CustomValue = item };
+			}
+			else if (LabelBinding.GetString(item, out string label)) {
+				istate.label = new TextShim() { Text = label };
+			}
+			else {
+				// fake it
+				istate.label = new ObjectShim() { Text = item.ToString(), CustomValue = item };
 			}
 			return istate;
 		}
