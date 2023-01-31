@@ -5,7 +5,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public /*abstract*/ class Component_Operation {
+	public class Component_Operation : CommandPort_Operation {
 		public readonly ChartComponent Component;
 		public readonly RefreshRequestType Type;
 		public readonly AxisUpdateState Axis;
@@ -15,26 +15,29 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Axis = axis;
 		}
 	}
-	public class ChartComponent : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
-		#region inner
-		public interface IForwardCommandPort {
-			void Forward(Component_RefreshRequest dso);
-		}
-		#endregion
+	/// <summary>
+	/// Base class of chart components.
+	/// </summary>
+	public abstract class ChartComponent : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
+		#region properties
 		/// <summary>
 		/// Used for unsolicited messages.
 		/// </summary>
-		public IForwardCommandPort Forward { get; set; }
+		public IForwardCommandPort<Component_RefreshRequest> Forward { get; set; }
 		/// <summary>
 		/// Return the name if set, otherwise the type.
 		/// </summary>
 		/// <returns>Name or type.</returns>
 		public string NameOrType() { return string.IsNullOrEmpty(Name) ? GetType().Name : Name; }
+		#endregion
+		#region handlers
 		void IConsumer<DataContextChangedEventArgs>.Consume(DataContextChangedEventArgs args) {
 			if (DataContext != args.NewValue) {
 				DataContext = args.NewValue;
 			}
 		}
+		#endregion
+		#region static
 		/// <summary>
 		/// Bind source.Path to the target.DP.
 		/// </summary>
@@ -51,5 +54,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			target.ClearValue(dp);
 			BindingOperations.SetBinding(target, dp, bx);
 		}
+		#endregion
 	}
 }
