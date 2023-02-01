@@ -3,12 +3,8 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
-using System.Xml.Linq;
-using Windows.UI.Composition;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
@@ -20,10 +16,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
-		class Axis_RenderState : RenderStateCore<Axis_ItemState> {
-			internal Axis_RenderState(List<ItemStateCore> state) : base(state) {
-			}
-		}
 		class Axis_ItemState : ItemStateCore {
 			internal FrameworkElement Element;
 			internal TextShim label;
@@ -195,7 +187,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
 			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(dsr.Items);
 			var itemstate = new List<ItemStateCore>();
-			ProcessList<Axis_ItemState>(exit.Concat(enter), this, itemstate);
+			ProcessItems<Axis_ItemState>(exit.Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
@@ -203,7 +195,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
 			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(slidingWindow.NewItems);
 			var itemstate = new List<ItemStateCore>();
-			ProcessList<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
+			ProcessItems<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
 		protected virtual void Add(DataSource_Add add) { }
