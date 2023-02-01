@@ -6,6 +6,10 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region Component_Operation
+	/// <summary>
+	/// Send on the command port when an update occurs.
+	/// </summary>
 	public class Component_Operation : CommandPort_Operation {
 		public readonly ChartComponent Component;
 		public readonly RefreshRequestType Type;
@@ -16,13 +20,42 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Axis = axis;
 		}
 	}
+	#endregion
+	#region IListController<S>
+	/// <summary>
+	/// Manage state operations on a list of state items.
+	/// Including but not limited to Visual Tree management, Offset updates, Animation.
+	/// </summary>
+	/// <typeparam name="S">Item state type.</typeparam>
+	public interface IListController<S> where S : ItemStateCore {
+		/// <summary>
+		/// This item is entering.
+		/// </summary>
+		/// <param name="index">Current index; MAY be different than the item's index.</param>
+		/// <param name="item">Target item.</param>
+		void EnteringItem(int index, S item);
+		/// <summary>
+		/// This item is exiting.
+		/// </summary>
+		/// <param name="index">Current (exiting) index; MAY be different than the item's index.</param>
+		/// <param name="item">Target item.</param>
+		void ExitingItem(int index, S item);
+		/// <summary>
+		/// This item is "live" meaning it already existed before the operation started.
+		/// </summary>
+		/// <param name="index">Current index; MAY be different than the item's index.</param>
+		/// <param name="item">Target item.</param>
+		void LiveItem(int index, S item);
+	}
+	#endregion
+	#region ChartComponent
 	/// <summary>
 	/// Base class of chart components.
 	/// </summary>
 	public abstract class ChartComponent : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
 		#region properties
 		/// <summary>
-		/// Used for unsolicited messages.
+		/// Use to enqueue unit-of-work to the render pipeline.
 		/// </summary>
 		public IForwardCommandPort<Component_RefreshRequest> Forward { get; set; }
 		/// <summary>
@@ -60,26 +93,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="list">Instruction list.</param>
 		/// <param name="itemstate">Output list. Accumulates Live and Enter items.</param>
-		public static void ProcessList<S>(IEnumerable<(ItemStatus st, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
+		public static void ProcessItems<S>(IEnumerable<(ItemStatus st, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
 			int index = 0;
+			int xindex = 0;
 			foreach ((ItemStatus st, S state) in list) {
 				if (state == null) continue;
 				switch (st) {
 					case ItemStatus.Exit:
-						ilc.ExitingItem(index, state);
+						ilc.ExitingItem(xindex, state);
+						xindex++;
 						break;
 					case ItemStatus.Live:
 						ilc.LiveItem(index, state);
 						itemstate.Add(state);
+						index++;
 						break;
 					case ItemStatus.Enter:
 						ilc.EnteringItem(index, state);
 						itemstate.Add(state);
+						index++;
 						break;
 				}
-				index++;
 			}
 		}
 		#endregion
 	}
+	#endregion
 }
