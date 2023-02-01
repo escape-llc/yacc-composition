@@ -32,14 +32,14 @@ namespace Yacc.Composition.Demo {
 			items.Add(new Observation { Index = 2, Value1 = 3, Value2 = -1, Value3 = -2 });
 			items.Add(new Observation { Index = 3, Value1 = 4, Value2 = 2, Value3 = -3 });
 			items.Add(new Observation { Index = 4, Value1 = 5, Value2 = -2, Value3 = -4 });
-			CommandPort1 = new DataSource_Reset(items, typeof(Observation));
+			CommandPort1 = DataSource.Reset(items);
 			var items2 = new List<Observation>();
 			items2.Add(new Observation { Index = 0, Value1 = 16, Value2 = 10.5, Value3 = -10.25 });
 			items2.Add(new Observation { Index = 1, Value1 = 4, Value2 = 10, Value3 = -10 });
 			items2.Add(new Observation { Index = 2, Value1 = 0.75, Value2 = -10, Value3 = -20 });
 			items2.Add(new Observation { Index = 3, Value1 = -4, Value2 = 20, Value3 = -30 });
 			items2.Add(new Observation { Index = 4, Value1 = -16, Value2 = -20, Value3 = -40 });
-			CommandPort2 = new DataSource_Reset(items2, typeof(Observation));
+			CommandPort2 = DataSource.Reset(items2);
 		}
 
 		private void Chart_ChartError(eScapeLLC.UWP.Charts.Composition.Chart sender, eScapeLLC.UWP.Charts.Composition.ChartErrorEventArgs args) {
