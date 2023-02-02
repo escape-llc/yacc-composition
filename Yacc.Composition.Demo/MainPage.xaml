@@ -2,168 +2,54 @@
 	x:Class="Yacc.Composition.Demo.MainPage"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:local="using:Yacc.Composition.Demo"
-	xmlns:yacc="using:eScapeLLC.UWP.Charts.Composition"
+	xmlns:wtk="using:Microsoft.Toolkit.Uwp.UI.Controls"
+	xmlns:controls="using:Microsoft.UI.Xaml.Controls"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-	mc:Ignorable="d"
-	Background="Orange">
+	mc:Ignorable="d">
 	<Page.Resources>
-		<Style x:Key="ValueAxisLabel" TargetType="TextBlock">
-			<Setter Property="Foreground" Value="White"/>
-			<Setter Property="FontStyle" Value="Italic"/>
-			<Setter Property="FontSize" Value="12"/>
-			<Setter Property="TextAlignment" Value="Right"/>
-			<Setter Property="VerticalAlignment" Value="Center"/>
-			<Setter Property="HorizontalAlignment" Value="Right"/>
-		</Style>
-		<Style x:Key="ValueAxisLabel_Right" TargetType="TextBlock">
-			<Setter Property="Foreground" Value="Yellow"/>
-			<Setter Property="FontStyle" Value="Italic"/>
-			<Setter Property="FontSize" Value="12"/>
-			<Setter Property="TextAlignment" Value="Left"/>
-			<Setter Property="VerticalAlignment" Value="Center"/>
-			<Setter Property="HorizontalAlignment" Value="Left"/>
-		</Style>
-		<Style x:Key="Labels" TargetType="TextBlock">
-			<Setter Property="Foreground" Value="White"/>
-			<Setter Property="FontWeight" Value="Bold"/>
-			<Setter Property="TextAlignment" Value="Center"/>
-			<Setter Property="VerticalAlignment" Value="Center"/>
-			<Setter Property="HorizontalAlignment" Value="Center"/>
-			<Setter Property="FontSize" Value="12"/>
-		</Style>
-		<Style x:Key="BigLabels" BasedOn="{StaticResource Labels}" TargetType="TextBlock">
-			<Setter Property="FontSize" Value="16"/>
-			<Setter Property="Foreground" Value="Cyan"/>
-		</Style>
-		<DataTemplate x:Key="TextBlock">
-			<TextBlock Text="{Binding Text}"/>
+		<DataTemplate x:Key="PageItem">
+			<RelativePanel HorizontalAlignment="Stretch">
+				<FontIcon x:Name="icon" Glyph="{Binding Glyph}" FontFamily="Arial" FontWeight="Bold" FontSize="40" Width="48" MaxWidth="48" VerticalAlignment="Center"
+				RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignVerticalCenterWithPanel="True"/>
+				<TextBlock x:Name="title" Text="{Binding Title}" FontSize="16"
+					RelativePanel.RightOf="icon" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignTopWithPanel="True"/>
+				<TextBlock Text="{Binding Description}" FontSize="12"
+					RelativePanel.RightOf="icon" RelativePanel.AlignRightWithPanel="True" RelativePanel.Below="title"/>
+			</RelativePanel>
 		</DataTemplate>
-		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
-			<yacc:ColumnElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
-				<yacc:Brush_Color Color="Red"/>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
-				<yacc:Brush_Color Color="Green"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column2Style" CornerRadiusX="0.05" CornerRadiusY="0.05">
-			<yacc:ColumnElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1.5" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
-				<yacc:Brush_RadialGradient>
-					<yacc:Brush_RadialGradient.ColorStops>
-						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
-						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
-					</yacc:Brush_RadialGradient.ColorStops>
-				</yacc:Brush_RadialGradient>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
-				<yacc:Brush_Color Color="CornflowerBlue"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column3Style" CornerRadiusX="0" CornerRadiusY="0">
-			<yacc:ColumnElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
-				<yacc:Brush_Color Color="LimeGreen"/>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
-				<yacc:Brush_Color Color="Blue"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column4Style" CornerRadiusX="0.025" CornerRadiusY="0.025" FlipGradients="True">
-			<yacc:ColumnElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
-				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
-					<yacc:Brush_LinearGradient.ColorStops>
-						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
-						<yacc:Brush_GradientColorStop Offset="0.5" Color="Green"/>
-						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
-					</yacc:Brush_LinearGradient.ColorStops>
-				</yacc:Brush_LinearGradient>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
-				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
-					<yacc:Brush_LinearGradient.ColorStops>
-						<yacc:Brush_GradientColorStop Offset="0" Color="Orange"/>
-						<yacc:Brush_GradientColorStop Offset="1" Color="Blue"/>
-					</yacc:Brush_LinearGradient.ColorStops>
-				</yacc:Brush_LinearGradient>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line1Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
-				<yacc:Brush_Color Color="GreenYellow"/>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line2Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
-				<yacc:Brush_Color Color="DarkGoldenrod"/>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line3Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
-				<yacc:Brush_LinearGradient StartPoint="0,.5" EndPoint="1,.5">
-					<yacc:Brush_LinearGradient.ColorStops>
-						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
-						<yacc:Brush_GradientColorStop Offset="0.5" Color="Green"/>
-						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
-					</yacc:Brush_LinearGradient.ColorStops>
-				</yacc:Brush_LinearGradient>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
+		<DataTemplate x:Key="NavItem">
+			<controls:NavigationViewItem Tag="{Binding Title}">
+				<controls:NavigationViewItem.Icon>
+					<FontIcon Glyph="{Binding Glyph}" FontFamily="Arial"/>
+				</controls:NavigationViewItem.Icon>
+				<StackPanel HorizontalAlignment="Stretch">
+					<TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Bold" />
+					<TextBlock Text="{Binding Description}" FontSize="12" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" HorizontalAlignment="Stretch" />
+				</StackPanel>
+			</controls:NavigationViewItem>
+		</DataTemplate>
 	</Page.Resources>
-	<yacc:Chart HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError">
-		<yacc:Chart.DataSources>
-			<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1}" />
-			<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2}" />
-		</yacc:Chart.DataSources>
-		<yacc:Chart.Components>
-			<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}"
-				CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
-				BarWidth=".24" BarOffset="0" />
-			<yacc:ColumnSeries Name="BarSeries2" DataSourceName="Source1" ElementFactory="{StaticResource Column2Style}"
-				CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value2"
-				BarWidth=".24" BarOffset=".25" />
-			<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}"
-				CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3"
-				BarWidth=".24" BarOffset=".5" />
-			<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}"
-				CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
-				BarWidth=".24" BarOffset=".75" />
-			<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
-				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value3"
-				LineOffset="0" />
-			<yacc:LineSeries Name="LineSeries2" DataSourceName="Source2" ElementFactory="{StaticResource Line2Style}"
-				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value2"
-				LineOffset=".5" />
-			<yacc:LineSeries Name="LineSeries3" DataSourceName="Source2" ElementFactory="{StaticResource Line3Style}"
-				CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value1"
-				LineOffset="1" />
-			<yacc:ValueLabels SourceName="BarSeries2" LabelFormatString="F2" x:Name="v_colv2" LabelTemplate="{StaticResource TextBlock}"
-				PlacementOffset="0,1" LabelOffset="0,-1" LabelStyle="{StaticResource BigLabels}" />
-			<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
-			<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
-			<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" AxisMargin="0" LimitMaximum="40" LimitMinimum="-40" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
-			<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="0" LimitMaximum="40" LimitMinimum="-40" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
-		</yacc:Chart.Components>
-	</yacc:Chart>
+	<controls:NavigationView Name="nav" MenuItemsSource="{Binding PageList}" MenuItemTemplate="{StaticResource NavItem}" ItemInvoked="NavigationView_ItemInvoked"
+		IsPaneOpen="True" IsBackButtonVisible="Collapsed" IsSettingsVisible="False">
+		<RelativePanel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+			<Frame x:Name="MainFrame" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" BorderBrush="Gray" BorderThickness="1"
+				RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True" RelativePanel.AlignTopWithPanel="True">
+				<Frame.ContentTransitions>
+					<TransitionCollection>
+						<NavigationThemeTransition/>
+						<!-- do not use ContentThemeTransition it conflicts with chart layout and causes flicker -->
+					</TransitionCollection>
+				</Frame.ContentTransitions>
+			</Frame>
+			<wtk:InAppNotification x:Name="Notification" ContentTemplate="{StaticResource PageItem}" RelativePanel.AlignBottomWithPanel="True" RelativePanel.AlignVerticalCenterWithPanel="True"/>
+		</RelativePanel>
+		<controls:NavigationView.PaneFooter>
+			<StackPanel Margin="4" Orientation="Horizontal" HorizontalAlignment="Center" Visibility="{Binding ElementName=nav,Path=IsPaneOpen}">
+				<TextBlock Visibility="{Binding IsShowHideSupported}" Margin="4,0,8,0" Text="Show/Hide &#x2714;" FontStyle="Italic" Foreground="DarkGray" />
+				<TextBlock Visibility="{Binding IsImplicitSupported}" Margin="4,0,8,0" Text="Implicit &#x2714;" FontStyle="Italic" Foreground="DarkGray" />
+				<TextBlock Visibility="{Binding IsRemote}" Margin="4,0,8,0" Text="RDP &#x2714;" FontStyle="Italic" Foreground="DarkGray" />
+			</StackPanel>
+		</controls:NavigationView.PaneFooter>
+	</controls:NavigationView>
 </Page>
