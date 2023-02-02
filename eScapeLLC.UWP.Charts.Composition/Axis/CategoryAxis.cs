@@ -198,7 +198,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ProcessItems<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
-		protected virtual void Add(DataSource_Add add) { }
+		protected virtual void Add(DataSource_Add add) {
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(add.NewItems);
+			IEnumerable<(ItemStatus st, Axis_ItemState state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
+			var itemstate = new List<ItemStateCore>();
+			ProcessItems<Axis_ItemState>(final, this, itemstate);
+			AxisLabels = itemstate;
+		}
+		protected virtual void Remove(DataSource_Remove remove) {
+			if (remove.AtFront) {
+				IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Take(remove.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Skip(remove.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
+				var itemstate = new List<ItemStateCore>();
+				ProcessItems<Axis_ItemState>(exit.Concat(live), this, itemstate);
+				AxisLabels = itemstate;
+			}
+			else {
+				IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Take(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Skip(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
+				var itemstate = new List<ItemStateCore>();
+				ProcessItems<Axis_ItemState>(live.Concat(exit), this, itemstate);
+				AxisLabels = itemstate;
+			}
+		}
 		#endregion
 		#region handlers
 		void IConsumer<Phase_Layout>.Consume(Phase_Layout message) {
@@ -221,14 +244,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (LabelBinding == null) return;
 			}
 			switch (message.Operation) {
-				case DataSource_Add dsa:
-					Add(dsa);
+				case DataSource_Add add:
+					Add(add);
 					break;
-				case DataSource_Reset dsr:
-					Reset(dsr);
+				case DataSource_Remove remove:
+					Remove(remove);
 					break;
-				case DataSource_SlidingWindow dst:
-					SlidingWindow(dst);
+				case DataSource_Reset reset:
+					Reset(reset);
+					break;
+				case DataSource_SlidingWindow sw:
+					SlidingWindow(sw);
 					break;
 			}
 		}
