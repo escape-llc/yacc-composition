@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Markup;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class LineSeries : CategoryValueSeries,
@@ -16,15 +17,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		static LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
 		#region inner
 		public class Series_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
-			public Series_ItemState(int index, double categoryOffset, double value, CompositionSpriteShape css) : base(index, categoryOffset, value, css) {
-			}
-		}
-		class Series_RenderState : RenderState_ShapeContainer<Series_ItemState> {
-			internal readonly IProvideConsume bus;
-			// appears to not work when AnyCPU is used
-			internal readonly CanvasPathBuilder Builder = new CanvasPathBuilder(new CanvasDevice());
-			internal Series_RenderState(List<ItemStateCore> state, IProvideConsume bus) : base(state) {
-				this.bus = bus;
+			public Series_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
 			}
 		}
 		#endregion
@@ -120,15 +113,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
 					return null;
 				}
-				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, value_val.Value, CategoryAxis.Orientation, ValueAxis.Orientation);
+				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, CategoryAxis.Orientation, value_val.Value, ValueAxis.Orientation);
 				var pt = new Vector2((float)xx, (float)yy);
 				if (beginf) {
+					if(index > 0) {
+						cpb.EndFigure(CanvasFigureLoop.Open);
+					}
 					cpb.BeginFigure(pt);
 				}
 				else {
 					cpb.AddLine(pt);
 				}
-				var istate = new Series_ItemState(index, LineOffset, value_val.Value, null);
+				var istate = new Series_ItemState(index, LineOffset, value_val.Value);
 				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
 				return istate;
 			}
@@ -146,6 +142,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					foreach (var shx in ccs.Shapes) shx.TransformMatrix = Model;
 				}
 			});
+			// not using Element
 			foreach (Series_ItemState item in ItemState) {
 				// apply new model transform
 				if (item.Element != null) {
