@@ -134,10 +134,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Reset exits any existing elements and enters all the elements given.
 		/// </summary>
-		/// <param name="dsr"></param>
-		protected virtual void Reset(DataSource_Reset dsr) { }
+		/// <param name="reset"></param>
+		protected virtual void Reset(DataSource_Reset reset) { }
 		/// <summary>
-		/// Sliding window exits and enters same number of elements on front/read respectively.
+		/// Sliding window exits and enters same number of elements on front/rear respectively.
 		/// </summary>
 		/// <param name="slidingWindow"></param>
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) { }
@@ -146,6 +146,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="add"></param>
 		protected virtual void Add(DataSource_Add add) { }
+		/// <summary>
+		/// Remove exits the given number of elements from front/rear as indicated.
+		/// </summary>
+		/// <param name="remove"></param>
+		protected virtual void Remove(DataSource_Remove remove) { }
 		/// <summary>
 		/// Respond to axis information update in <see cref="CategoryAxis"/> and <see cref="ValueAxis"/>.
 		/// </summary>
@@ -194,14 +199,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (ValueBinding == null) return;
 			}
 			switch (message.Operation) {
-				case DataSource_Add dsa:
-					Add(dsa);
+				case DataSource_Add add:
+					Add(add);
 					break;
-				case DataSource_Reset dsr:
-					Reset(dsr);
+				case DataSource_Reset reset:
+					Reset(reset);
 					break;
-				case DataSource_SlidingWindow dst:
-					SlidingWindow(dst);
+				case DataSource_SlidingWindow sw:
+					SlidingWindow(sw);
+					break;
+				case DataSource_Remove remove:
+					Remove(remove);
 					break;
 			}
 		}
