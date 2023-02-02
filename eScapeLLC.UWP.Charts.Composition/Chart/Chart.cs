@@ -380,11 +380,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			_trace.Verbose($"full starting {ls.LayoutRect} dso:{cpos.Count}");
 			// Phase I: reset axes
 			Bus.Consume(new Phase_InitializeAxes(Bus));
-			// Phase II: claim space (IRequireLayout)
+			// Phase IIa: claim space (IRequireLayout)
 			Bus.Consume(new Phase_Layout(ls.Layout));
 			// what's left is for the data series area
 			_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
 			ls.Layout.FinalizeRects();
+			// Phase IIb: notify final layout
 			Bus.Consume(new Phase_LayoutComplete(ls));
 			// Phase III: operation(s)
 			foreach (var op in cpos) {
