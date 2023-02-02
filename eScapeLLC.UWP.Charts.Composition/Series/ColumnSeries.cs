@@ -10,11 +10,6 @@ using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public interface IListController<S> where S : ItemStateCore {
-		void EnteringItem(int index, S state);
-		void ExitingItem(int index, S state);
-		void LiveItem(int index, S state);
-	}
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
@@ -28,11 +23,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Item state.
 		/// </summary>
 		public class Series_ItemState : ItemState_CategoryValue<CompositionShape> {
-			public Series_ItemState(int index, double categoryOffset, double value, CompositionShape css) : base(index, categoryOffset, value, css) {
+			public Series_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
 			}
 			public void Reindex(int idx) { Index = idx; }
-			public void ResetElement() { Element = null; }
-			public void SetElement(CompositionShape cs) { Element = cs; }
 		}
 		/// <summary>
 		/// Label placement session.
@@ -50,8 +43,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if(isi is Series_ItemState sis) {
 					var invert = sis.DataValue < 0 ? -1 : 1;
 					double hw = width / 2.0, hh = Math.Abs(sis.DataValue / 2.0);
-					var (xx, yy) = MappingSupport.MapComponents(sis.Component1 + hw + offset.X*hw, (sis.DataValue / 2.0) + offset.Y*hh*invert, c1axis, c2axis);
-					var (dx, dy) = MappingSupport.MapComponents(1, sis.DataValue > 0 ? 1 : -1, c1axis, c2axis);
+					var (xx, yy) = MappingSupport.MapComponents(sis.Component1 + hw + offset.X * hw, c1axis, (sis.DataValue / 2.0) + offset.Y * hh * invert, c2axis);
+					var (dx, dy) = MappingSupport.MapComponents(1, c1axis, sis.DataValue > 0 ? 1 : -1, c2axis);
 					var center = new Vector2((float)xx, (float)yy);
 					return (Project(center), new Point(dx, dy));
 				}
@@ -149,28 +142,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="cx"></param>
 		/// <param name="index"></param>
 		/// <param name="item"></param>
-		/// <returns></returns>
+		/// <returns>NULL or new instance.</returns>
 		protected virtual Series_ItemState CreateState(Compositor cx, int index, object item) {
 			if (ValueBinding.GetDouble(item, out double? value_val)) {
 				// short-circuit if it's NaN or NULL
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
 					return null;
 				}
-				var istate = new Series_ItemState(index, BarOffset, value_val.Value, null);
+				var istate = new Series_ItemState(index, BarOffset, value_val.Value);
 				_trace.Verbose($"{Name}[{index}] state val:{istate.DataValue}");
 				return istate;
 			}
 			return null;
 		}
 		/// <summary>
-		/// Create shape with default style.
+		/// Create shape with <see cref="ElementFactory"/>.
 		/// </summary>
 		/// <param name="cx"></param>
 		/// <param name="index"></param>
 		/// <param name="value"></param>
 		/// <returns></returns>
 		protected virtual CompositionShape CreateShape(Compositor cx, int index, double value) {
-			var (xx, yy) = MappingSupport.MapComponents(BarWidth, Math.Abs(value), CategoryAxis.Orientation, ValueAxis.Orientation);
+			var (xx, yy) = MappingSupport.MapComponents(BarWidth, CategoryAxis.Orientation, Math.Abs(value), ValueAxis.Orientation);
 			var ctx = new ColumnElementContext(cx, index, BarOffset, value, xx, yy, CategoryAxis, ValueAxis);
 			var element = ElementFactory.CreateElement(ctx);
 			element.Comment = $"{Name}[{index}]";
@@ -178,7 +171,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return element;
 		}
 		/// <summary>
-		/// Item is entering the Visual Tree.
+		/// Item is entering the list.
 		/// </summary>
 		/// <param name="item"></param>
 		protected virtual void Entering(Series_ItemState item) {
@@ -187,7 +180,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		/// <summary>
-		/// Item is exiting the Visual Tree.
+		/// Item is exiting the list.
 		/// </summary>
 		/// <param name="item"></param>
 		protected virtual void Exiting(Series_ItemState item) {
@@ -201,8 +194,46 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected virtual bool IsSelected(Series_ItemState item) {
 			return true;
 		}
+		/// <summary>
+		/// Core part of the update cycle.
+		/// </summary>
+		/// <param name="items">Sequence of item states.</param>
+		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, Series_ItemState state)> items) {
+			var itemstate = new List<ItemStateCore>();
+			ResetLimits();
+			Model = Matrix3x2.Identity;
+			ProcessItems<Series_ItemState>(items, this, itemstate);
+			UpdateLimits(itemstate.Count);
+			ItemState = itemstate;
+		}
 		#endregion
 		#region data operation extensions
+		protected override void Add(DataSource_Add add) {
+			if (Container == null) return;
+			// axes are not checked for by super class
+			if (CategoryAxis == null) return;
+			if (ValueAxis == null) return;
+			IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Select(xx => (ItemStatus.Live, xx as Series_ItemState));
+			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(add.NewItems);
+			IEnumerable<(ItemStatus st, Series_ItemState state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
+			UpdateCore(final);
+		}
+		protected override void Remove(DataSource_Remove remove) {
+			if (Container == null) return;
+			// axes are not checked for by super class
+			if (CategoryAxis == null) return;
+			if (ValueAxis == null) return;
+			if(remove.AtFront) {
+				IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Take(remove.Count).Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
+				IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Skip(remove.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
+				UpdateCore(exit.Concat(live));
+			}
+			else {
+				IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Take(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
+				IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Skip(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
+				UpdateCore(live.Concat(exit));
+			}
+		}
 		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
 			if (Container == null) return;
 			// axes are not checked for by super class
@@ -211,12 +242,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(slidingWindow.NewItems);
-			var itemstate = new List<ItemStateCore>();
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-			ProcessList<Series_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
-			UpdateLimits(itemstate.Count);
-			ItemState = itemstate;
+			UpdateCore(exit.Concat(live).Concat(enter));
 		}
 		protected override void Reset(DataSource_Reset dsr) {
 			if (Container == null) return;
@@ -225,12 +251,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (ValueAxis == null) return;
 			IEnumerable<(ItemStatus st, Series_ItemState state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as Series_ItemState));
 			IEnumerable<(ItemStatus st, Series_ItemState state)> enter = Entering(dsr.Items);
-			var itemstate = new List<ItemStateCore>();
-			ResetLimits();
-			Model = Matrix3x2.Identity;
-			ProcessList<Series_ItemState>(exit.Concat(enter), this, itemstate);
-			UpdateLimits(itemstate.Count);
-			ItemState = itemstate;
+			UpdateCore(exit.Concat(enter));
 		}
 		protected override void UpdateModelTransform() {
 			if(CategoryAxis.Orientation == AxisOrientation.Horizontal) {
