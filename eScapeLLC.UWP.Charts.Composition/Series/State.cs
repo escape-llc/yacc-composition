@@ -127,6 +127,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		ISeriesItem Original { get; }
 	}
 	#endregion
+	#region components
+	/// <summary>
+	/// Single component: C_1.
+	/// </summary>
+	public interface IComponentC1 {
+		double Component1 { get; }
+	}
+	/// <summary>
+	/// Double component: C_1, C_2.
+	/// </summary>
+	public interface IComponentC1C2 {
+		double Component1 { get; }
+		double Component2 { get; }
+	}
+	#endregion
 	#endregion
 	#region item state implementations
 	/// <summary>
@@ -155,7 +170,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Suitable for C_1(Value), e.g. Horizontal/Vertical Value Rule that spans series area.
 	/// Represents a single value; index is not part of the data.
 	/// </summary>
-	public class ItemStateC1 : ItemStateCore {
+	public class ItemStateC1 : ItemStateCore, IComponentC1 {
 		/// <summary>
 		/// The C_1 value.
 		/// </summary>
@@ -169,7 +184,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Suitable for C_1(Value), C_2(Value), e.g. min/max, e.g. Horizontal/Vertical Value Band that spans series area.
 	/// Represents a single value; index is not part of the data.
 	/// </summary>
-	public class ItemStateRange : ItemStateCore {
+	public class ItemStateRange : ItemStateCore, IComponentC1C2 {
 		public ItemStateRange(int index, double c1, double c2) : base(index) {
 			Component1 = c1;
 			Component2 = c2;
@@ -181,7 +196,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// Suitable for C_1(Index), C_2(Value) series.
 	/// </summary>
-	public class ItemStateC2 : ItemStateCore, ISeriesItemValueDouble {
+	public class ItemStateC2 : ItemStateCore, ISeriesItemValueDouble, IComponentC1C2 {
 		/// <summary>
 		/// Alias for the <see cref="Index"/>.
 		/// </summary>
@@ -202,12 +217,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Suitable for C_1(Index + CategoryOffset), C_2(Value) series.
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
-	/// <typeparam name="C">Composition shape element type.</typeparam>
-	public class ItemState_CategoryValue<C> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where C: CompositionObject {
-		public C Element { get; protected set; }
-		public ItemState_CategoryValue(int index, double categoryOffset, double c2, C element, int channel = 0) : base(index, c2, channel) {
+	/// <typeparam name="E">Composition object type.</typeparam>
+	public class ItemState_CategoryValue<E> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where E: CompositionObject {
+		public E Element { get; protected set; }
+		public ItemState_CategoryValue(int index, double categoryOffset, double c2, int channel = 0) : base(index, c2, channel) {
 			CategoryOffset = categoryOffset;
-			Element = element;
 		}
 		#region properties
 		/// <summary>
@@ -225,6 +239,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public double DataValue => Component2;
 		double ISeriesItemValueDouble.DoubleValue => Component2;
 		#endregion
+		#region public
+		/// <summary>
+		/// Release the element.
+		/// </summary>
+		public virtual void ResetElement() { Element = null; }
+		/// <summary>
+		/// Accept new element.
+		/// </summary>
+		/// <param name="el">New element.</param>
+		public virtual void SetElement(E el) { Element = el; }
 		/// <summary>
 		/// Calculate offset for Column series sprite.
 		/// If the value is negative, adjust the vertical offset by that amount.
@@ -235,7 +259,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <exception cref="ArgumentException"></exception>
 		public Vector2 OffsetForColumn(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, Math.Min(Component2, 0), cori, vori);
+			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Math.Min(Component2, 0), vori);
 			return new Vector2((float)xx, (float)yy);
 		}
 		/// <summary>
@@ -249,9 +273,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <exception cref="ArgumentException"></exception>
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, Component2, cori, vori);
+			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
 			return new Vector2((float)xx, (float)yy);
 		}
+		#endregion
 	}
 	/// <summary>
 	/// Suitable for C_1(Value1), C_2(Value2) series, e.g. Scatter Plot.
@@ -270,7 +295,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public override double[] Components() => new double[] { Component1, Component2 };
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, Component2, cori, vori);
+			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
 			return new Vector2((float)xx, (float)yy);
 		}
 	}
@@ -308,7 +333,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public override double[] Components() => new double[] { Component1, Component2, Component3 };
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, Component2, cori, vori);
+			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
 			return new Vector2((float)xx, (float)yy);
 		}
 	}
@@ -350,60 +375,5 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>NULL: cannot calculate; !NULL: placement info.  center in PX; direction for label placement.</returns>
 		public abstract (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset);
 	}
-	#endregion
-	#region render states
-	#region RenderStateCore<SIS>
-	/// <summary>
-	/// Render state core.
-	/// </summary>
-	/// <typeparam name="SIS">State item class.</typeparam>
-	public class RenderStateCore<SIS> where SIS : ItemStateCore {
-		/// <summary>
-		/// Tracks the index from Render().
-		/// </summary>
-		public int ix;
-		/// <summary>
-		/// Collects the item states created in Render().
-		/// Transfer to host in Postamble().
-		/// </summary>
-		public readonly List<ItemStateCore> itemstate;
-		/// <summary>
-		/// The recycler's iterator to generate the elements.
-		/// </summary>
-		/// <summary>
-		/// Ctor.
-		/// </summary>
-		/// <param name="state">Starting state; SHOULD be empty.</param>
-		public RenderStateCore(List<ItemStateCore> state) {
-			itemstate = state;
-		}
-	}
-	#endregion
-	#region RenderState_ShapeContainer<SIS>
-	/// <summary>
-	/// Render state with a <see cref="CompositionContainerShape"/> to hold the elements.
-	/// Container element SHOULD hold the P matrix, and its children the M matrix.
-	/// </summary>
-	/// <typeparam name="SIS">State item class.</typeparam>
-	public class RenderState_ShapeContainer<SIS> : RenderStateCore<SIS> where SIS: ItemStateCore {
-		public readonly CompositionContainerShape container;
-		public readonly Compositor compositor = Window.Current.Compositor;
-		public RenderState_ShapeContainer(List<ItemStateCore> state) : base(state) {
-			container = compositor.CreateContainerShape();
-			container.Comment = $"container_{typeof(SIS).Name}";
-		}
-		/// <summary>
-		/// Add to the state.
-		/// </summary>
-		/// <param name="istate">Item state.</param>
-		/// <param name="element">Corresponding composition element; MAY be NULL.</param>
-		public void Add(ItemStateCore istate, CompositionShape element) {
-			if (element != null) {
-				container.Shapes.Add(element);
-			}
-			itemstate.Add(istate);
-		}
-	}
-	#endregion
 	#endregion
 }
