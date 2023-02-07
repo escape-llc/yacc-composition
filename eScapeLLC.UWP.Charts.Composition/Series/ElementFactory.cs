@@ -1,4 +1,5 @@
 ﻿using eScapeLLC.UWP.Charts.Composition.Events;
+using System;
 using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
@@ -11,6 +12,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Use for creating composition objects.
 		/// </summary>
 		Compositor Compositor { get; }
+	}
+	public interface IElementExtentContext {
+		Axis_Extents Component1Axis { get; }
+		Axis_Extents Component2Axis { get; }
 	}
 	/// <summary>
 	/// Additional information for creating rectangle geometry.
@@ -59,6 +64,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		CompositionPath Path { get; }
 	}
+	public interface IElementDataOperation {
+		/// <summary>
+		/// True: inserting at the lowest-indexed end.
+		/// False: inserting at the highest-indexed end.
+		/// <para/>
+		/// Used to compute spawn points etc.
+		/// </summary>
+		bool AtFront { get; set; }
+	}
 	/// <summary>
 	/// Default context for basic use case in category/value scenario.
 	/// </summary>
@@ -87,13 +101,26 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// The data value.
 		/// </summary>
 		public double Value { get; private set; }
-		public CategoryValueContext(Compositor cx, int cc, double oo, double vv, Axis_Extents ca, Axis_Extents va) {
+		public CategoryValueContext(Compositor cx, int category, double coffset, double value, Axis_Extents ca, Axis_Extents va) {
 			Compositor = cx;
-			Category = cc;
-			CategoryOffset = oo;
-			Value = vv;
+			Category = category;
+			CategoryOffset = coffset;
+			Value = value;
 			CategoryAxis = ca;
 			ValueAxis = va;
+		}
+	}
+	public class DefaultContext : IElementFactoryContext, IElementExtentContext {
+		public Compositor Compositor { get; private set; }
+
+		public Axis_Extents Component1Axis { get; private set; }
+
+		public Axis_Extents Component2Axis { get; private set; }
+
+		public DefaultContext(Compositor compositor, Axis_Extents a1, Axis_Extents a2) {
+			Compositor = compositor;
+			Component1Axis = a1;
+			Component2Axis = a2;
 		}
 	}
 	/// <summary>
@@ -135,5 +162,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="iefc">Access to all.</param>
 		/// <returns>New instance.</returns>
 		CompositionShape CreateElement(IElementFactoryContext iefc);
+	}
+	public interface IAnimationFactory {
+		void Prepare(Compositor cc);
+		void Unprepare(Compositor cc);
+		void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
+		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
 	}
 }
