@@ -1,5 +1,6 @@
 ﻿using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
+using System.ComponentModel;
 using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
@@ -22,6 +23,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public interface IElementRectangleContext {
 		/// <summary>
+		/// Element index.
+		/// </summary>
+		int Index { get; }
+		/// <summary>
+		/// Category offset.
+		/// </summary>
+		double CategoryOffset { get; }
+		/// <summary>
+		/// Data value.
+		/// </summary>
+		double DataValue { get; }
+		/// <summary>
 		/// X axis extent.
 		/// </summary>
 		double Width { get; }
@@ -31,7 +44,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		double Height { get; }
 	}
 	/// <summary>
-	/// Additional information about the current value's data for this sprite.
+	/// Additional information about the <see cref="ISeriesItemCategoryValue"/> for this sprite.
 	/// </summary>
 	public interface IElementCategoryValueContext {
 		/// <summary>
@@ -43,17 +56,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		Axis_Extents ValueAxis { get; }
 		/// <summary>
-		/// The category (index) value.
+		/// The item.
 		/// </summary>
-		int Category { get; }
-		/// <summary>
-		/// The category offset for placement of geometry.
-		/// </summary>
-		double CategoryOffset { get; }
-		/// <summary>
-		/// The data value.
-		/// </summary>
-		double Value { get; }
+		ISeriesItemCategoryValue Item { get; }
 	}
 	/// <summary>
 	/// Additional information about the path to use in the sprite.
@@ -89,23 +94,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Information about value axis.
 		/// </summary>
 		public Axis_Extents ValueAxis { get; private set; }
-		/// <summary>
-		/// The category (index) value.
-		/// </summary>
-		public int Category { get; private set; }
-		/// <summary>
-		/// The category offset for placement of geometry.
-		/// </summary>
-		public double CategoryOffset { get; private set; }
-		/// <summary>
-		/// The data value.
-		/// </summary>
-		public double Value { get; private set; }
-		public CategoryValueContext(Compositor cx, int category, double coffset, double value, Axis_Extents ca, Axis_Extents va) {
+		public ISeriesItemCategoryValue Item { get; private set; }
+		public CategoryValueContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va) {
 			Compositor = cx;
-			Category = category;
-			CategoryOffset = coffset;
-			Value = value;
+			Item = isicv;
 			CategoryAxis = ca;
 			ValueAxis = va;
 		}
@@ -126,11 +118,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// Context for creating bars.
 	/// </summary>
-	public class ColumnElementContext : CategoryValueContext, IElementRectangleContext {
-		public ColumnElementContext(Compositor cx, int cc, double oo, double vv, double ww, double hh, Axis_Extents ca, Axis_Extents va) :base(cx, cc, oo, vv, ca, va) {
+	public class ColumnElementContext : DefaultContext, IElementRectangleContext {
+		public ColumnElementContext(Compositor cx, int index, double coffset, double value, double ww, double hh, Axis_Extents ca, Axis_Extents va) :base(cx, ca, va) {
+			Index = index;
+			CategoryOffset = coffset;
+			DataValue = value;
 			Width = ww;
 			Height = hh;
 		}
+		public int Index { get; private set; }
+		public double CategoryOffset { get; private set; }
+		public double DataValue { get; private set; }
 		/// <summary>
 		/// <inheritdoc/>
 		/// </summary>
@@ -144,7 +142,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Context for creating paths.
 	/// </summary>
 	public class PathGeometryContext : CategoryValueContext, IElementCompositionPath {
-		public PathGeometryContext(Compositor cx, int cc, double oo, double vv, Axis_Extents ca, Axis_Extents va, CompositionPath path) : base(cx, cc, oo, vv, ca, va) {
+		public PathGeometryContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, CompositionPath path) : base(cx, isicv, ca, va) {
 			Path = path;
 		}
 		/// <summary>
