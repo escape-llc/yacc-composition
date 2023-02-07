@@ -16,8 +16,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <para/>
 	/// NOTE THIS CAN NO LONGER BE an Inner Class or XAML will not load it!
 	/// </summary>
-	public class Series_ItemState : ItemState_CategoryValue<CompositionShape> {
-		public Series_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
+	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape> {
+		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
 		}
 		public void Reindex(int idx) { Index = idx; }
 	}
@@ -25,8 +25,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
-	public class ColumnSeries : CategoryValueSeries<Series_ItemState>,
-		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IListController<Series_ItemState>,
+	public class ColumnSeries : CategoryValueSeries<ColumnSeries_ItemState>,
+		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IListController<ColumnSeries_ItemState>,
 		IConsumer<Phase_RenderTransforms> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
@@ -43,7 +43,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				this.c2axis = c2axis;
 			}
 			public override (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset) {
-				if(isi is Series_ItemState sis) {
+				if(isi is ColumnSeries_ItemState sis) {
 					var invert = sis.DataValue < 0 ? -1 : 1;
 					double hw = width / 2.0, hh = Math.Abs(sis.DataValue / 2.0);
 					var (xx, yy) = MappingSupport.MapComponents(sis.Component1 + hw + offset.X * hw, c1axis, (sis.DataValue / 2.0) + offset.Y * hh * invert, c2axis);
@@ -87,7 +87,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected CompositionContainerShape Container { get; set; }
 		#endregion
 		#region helpers
-		void UpdateOffset(Series_ItemState item) {
+		void UpdateOffset(ColumnSeries_ItemState item) {
 			if (item.Element != null) {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y} to:{offset.X},{offset.Y}");
@@ -102,7 +102,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IListController<>
-		void IListController<Series_ItemState>.LiveItem(int index, Series_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.LiveItem(int index, ColumnSeries_ItemState state) {
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
 			if (elementSelected && state.Element == null) {
@@ -119,7 +119,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				UpdateOffset(state);
 			}
 		}
-		void IListController<Series_ItemState>.EnteringItem(int index, Series_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.EnteringItem(int index, ColumnSeries_ItemState state) {
 			state.Reindex(index);
 			bool elementSelected2 = IsSelected(state);
 			if (elementSelected2) {
@@ -129,7 +129,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				UpdateOffset(state);
 			}
 		}
-		void IListController<Series_ItemState>.ExitingItem(int index, Series_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.ExitingItem(int index, ColumnSeries_ItemState state) {
 			if (state.Element != null) {
 				Exiting(state);
 			}
@@ -142,13 +142,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="index"></param>
 		/// <param name="item"></param>
 		/// <returns>NULL or new instance.</returns>
-		protected override Series_ItemState CreateState(int index, object item) {
+		protected override ColumnSeries_ItemState CreateState(int index, object item) {
 			if (ValueBinding.GetDouble(item, out double? value_val)) {
 				// short-circuit if it's NaN or NULL
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
 					return null;
 				}
-				var istate = new Series_ItemState(index, BarOffset, value_val.Value);
+				var istate = new ColumnSeries_ItemState(index, BarOffset, value_val.Value);
 				_trace.Verbose($"{Name}[{index}] create-state val:{istate.DataValue}");
 				return istate;
 			}
@@ -174,7 +174,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Item is entering the list.
 		/// </summary>
 		/// <param name="item"></param>
-		protected virtual void Entering(Series_ItemState item) {
+		protected virtual void Entering(ColumnSeries_ItemState item) {
 			if (item != null && item.Element != null) {
 				if (AnimationFactory != null) {
 					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis);
@@ -191,7 +191,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Item is exiting the list.
 		/// </summary>
 		/// <param name="item"></param>
-		protected virtual void Exiting(Series_ItemState item) {
+		protected virtual void Exiting(ColumnSeries_ItemState item) {
 			if (item != null && item.Element != null) {
 				if (AnimationFactory != null) {
 					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis);
@@ -206,18 +206,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 			}
 		}
-		protected virtual void UpdateStyle(Series_ItemState item) {
+		protected virtual void UpdateStyle(ColumnSeries_ItemState item) {
 		}
-		protected virtual bool IsSelected(Series_ItemState item) {
+		protected virtual bool IsSelected(ColumnSeries_ItemState item) {
 			return true;
 		}
 		/// <summary>
 		/// Core part of the update cycle.
 		/// </summary>
 		/// <param name="items">Sequence of item states.</param>
-		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, Series_ItemState state)> items) {
+		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, ColumnSeries_ItemState state)> items) {
 			var itemstate = new List<ItemStateCore>();
-			ProcessItems<Series_ItemState>(items, this, itemstate);
+			ProcessItems<ColumnSeries_ItemState>(items, this, itemstate);
 			ItemState = itemstate;
 		}
 		#endregion
@@ -229,7 +229,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (model == Model) return;
 			Model = model;
 			var ctx = new DefaultContext(Container.Compositor, CategoryAxis, ValueAxis);
-			foreach (Series_ItemState item in ItemState) {
+			foreach (ColumnSeries_ItemState item in ItemState) {
 				// apply new model transform
 				if (item != null && item.Element != null) {
 					if (AnimationFactory != null) {
