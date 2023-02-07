@@ -1,7 +1,111 @@
-﻿using System.Numerics;
+﻿using System;
+using System.ComponentModel;
+using System.Numerics;
 using Windows.UI.Composition;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Hosting;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region AnimationFactory_Default
+	public class AnimationFactory_Default : IAnimationFactory {
+		Vector2KeyFrameAnimation aoffset;
+		ExpressionAnimation xform;
+		ImplicitAnimationCollection iac;
+		Vector2KeyFrameAnimation enter;
+		Vector2KeyFrameAnimation exit;
+		public void Prepare(Compositor cc) {
+			Vector2KeyFrameAnimation aoffset = cc.CreateVector2KeyFrameAnimation();
+			aoffset.InsertExpressionKeyFrame(1f, "Index");
+			aoffset.Duration = TimeSpan.FromMilliseconds(2000);
+			aoffset.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+			aoffset.Target = nameof(CompositionShape.Offset);
+			aoffset.Comment = "Shift";
+			this.aoffset = aoffset;
+			var enter = cc.CreateVector2KeyFrameAnimation();
+			enter.InsertExpressionKeyFrame(1f, "this.FinalValue");
+			enter.Duration = TimeSpan.FromMilliseconds(1500);
+			enter.Target = nameof(CompositionShape.Offset);
+			enter.Comment = "Enter";
+			this.enter = enter;
+			var exit = cc.CreateVector2KeyFrameAnimation();
+			exit.InsertExpressionKeyFrame(1f, "Index");
+			exit.Duration = TimeSpan.FromMilliseconds(1500);
+			exit.Target = nameof(CompositionShape.Offset);
+			exit.Comment = "Exit";
+			this.exit = exit;
+			ExpressionAnimation xxx = cc.CreateExpressionAnimation();
+			xxx.Properties.InsertVector3("Component1", new Vector3(1, 0, 0));
+			xxx.Properties.InsertVector3("Component2", new Vector3(0, 1, 0));
+			xxx.Expression = "Matrix3x2(props.Component1.X,props.Component2.X,props.Component1.Y,props.Component2.Y,props.Component1.Z,props.Component2.Z)";
+			xxx.SetExpressionReferenceParameter("props", xxx.Properties);
+			xxx.Target = nameof(CompositionShape.TransformMatrix);
+			xxx.Comment = "TransformMatrix";
+			this.xform = xxx;
+			var iac = cc.CreateImplicitAnimationCollection();
+			iac[nameof(CompositionShape.Offset)] = aoffset;
+			iac[nameof(CompositionShape.TransformMatrix)] = xform;
+			iac.Comment = "Implicit";
+			this.iac = iac;
+		}
+		public void Unprepare(Compositor cc) {
+			xform?.Dispose(); xform = null;
+			aoffset?.Dispose(); aoffset = null;
+			exit?.Dispose(); exit = null;
+			enter?.Dispose(); enter = null;
+			iac?.Dispose(); iac = null;
+		}
+		public ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc) {
+			return iac;
+		}
+		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null) {
+			switch (key) {
+				case "Enter":
+					if (co is CompositionShape cs && iefc is IElementCategoryValueContext ieec) {
+						// calculate the spawn point
+						var (xx, yy) = MappingSupport.MapComponents(
+							ieec.Category + ieec.CategoryOffset + /*ieec.CategoryAxis.Maximum*/2, ieec.CategoryAxis.Orientation,
+							Math.Min(ieec.Value, 0), ieec.ValueAxis.Orientation);
+						cs.Offset = new Vector2((float)xx, (float)yy);
+						// callback MUST add to VT
+						cfg?.Invoke(enter);
+						//co.StartAnimation(enter.Target, enter);
+					}
+					break;
+				case "Exit":
+					if (co is CompositionShape cs2 && iefc is IElementCategoryValueContext ieec2) {
+						CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+						ccb.Completed += (sender, cbcea) => {
+							// callback SHOULD remove from VT
+							cfg?.Invoke(exit);
+						};
+						// calculate the exit point
+						var (xx, yy) = MappingSupport.MapComponents(
+							-2, ieec2.CategoryAxis.Orientation,
+							Math.Min(ieec2.Value, 0), ieec2.ValueAxis.Orientation);
+						var vxx = new Vector2((float)xx, (float)yy);
+						exit.SetVector2Parameter("Index", vxx);
+						cs2.StartAnimation(exit.Target, exit);
+						ccb.End();
+					}
+					break;
+				case "Transform":
+					cfg?.Invoke(xform);
+					co.StartAnimation(xform.Target, xform);
+					break;
+				case "Offset":
+					if (iefc is IElementCategoryValueContext ieec3) {
+						var (xx, yy) = MappingSupport.MapComponents(
+							ieec3.Category + ieec3.CategoryOffset, ieec3.CategoryAxis.Orientation,
+							Math.Min(ieec3.Value, 0), ieec3.ValueAxis.Orientation);
+						var vxx = new Vector2((float)xx, (float)yy);
+						aoffset.SetVector2Parameter("Index", vxx);
+						co.StartAnimation(aoffset.Target, aoffset);
+					}
+					break;
+			}
+		}
+	}
+	#endregion
 	#region ColumnElementFactory_Default
 	/// <summary>
 	/// Default factory for creating rounded rectangle sprites.
@@ -28,7 +132,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public ColumnElementFactory_Default() { }
 		protected void FlipGradient(Brush_LinearGradient blg, CompositionLinearGradientBrush clgb) {
 			var flip = clgb.StartPoint;
-			clgb.StartPoint = new Vector2((float)blg.EndPoint.X, (float)blg.EndPoint.Y);
+			clgb.StartPoint = clgb.EndPoint;
 			clgb.EndPoint = flip;
 		}
 		/// <summary>
