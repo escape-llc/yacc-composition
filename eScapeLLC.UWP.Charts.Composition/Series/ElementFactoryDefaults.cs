@@ -63,8 +63,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					if (co is CompositionShape cs && iefc is IElementCategoryValueContext ieec) {
 						// calculate the spawn point
 						var (xx, yy) = MappingSupport.MapComponents(
-							ieec.Category + ieec.CategoryOffset + /*ieec.CategoryAxis.Maximum*/2, ieec.CategoryAxis.Orientation,
-							Math.Min(ieec.Value, 0), ieec.ValueAxis.Orientation);
+							ieec.Item.CategoryValue + ieec.Item.CategoryOffset + /*ieec.CategoryAxis.Maximum*/2, ieec.CategoryAxis.Orientation,
+							Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
 						cs.Offset = new Vector2((float)xx, (float)yy);
 						// callback MUST add to VT
 						cfg?.Invoke(enter);
@@ -81,7 +81,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 						// calculate the exit point
 						var (xx, yy) = MappingSupport.MapComponents(
 							-2, ieec2.CategoryAxis.Orientation,
-							Math.Min(ieec2.Value, 0), ieec2.ValueAxis.Orientation);
+							Math.Min(ieec2.Item.DataValue, 0), ieec2.ValueAxis.Orientation);
 						var vxx = new Vector2((float)xx, (float)yy);
 						exit.SetVector2Parameter("Index", vxx);
 						cs2.StartAnimation(exit.Target, exit);
@@ -95,8 +95,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				case "Offset":
 					if (iefc is IElementCategoryValueContext ieec3) {
 						var (xx, yy) = MappingSupport.MapComponents(
-							ieec3.Category + ieec3.CategoryOffset, ieec3.CategoryAxis.Orientation,
-							Math.Min(ieec3.Value, 0), ieec3.ValueAxis.Orientation);
+							ieec3.Item.CategoryValue + ieec3.Item.CategoryOffset, ieec3.CategoryAxis.Orientation,
+							Math.Min(ieec3.Item.DataValue, 0), ieec3.ValueAxis.Orientation);
 						var vxx = new Vector2((float)xx, (float)yy);
 						aoffset.SetVector2Parameter("Index", vxx);
 						co.StartAnimation(aoffset.Target, aoffset);
@@ -149,26 +149,24 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var rectangle = iefc.Compositor.CreateRoundedRectangleGeometry();
 			var sprite = iefc.Compositor.CreateSpriteShape(rectangle);
 			Stroke?.Apply(sprite);
-			var iecvc = iefc as IElementCategoryValueContext;
+			var ierc = iefc as IElementRectangleContext;
 			if (FillBrush != null) {
 				sprite.FillBrush = FillBrush.CreateBrush(iefc.Compositor);
-				if (iecvc.Value < 0 && FillBrush is Brush_LinearGradient blg && FlipGradients && sprite.FillBrush is CompositionLinearGradientBrush clgb) {
+				if (ierc.DataValue < 0 && FillBrush is Brush_LinearGradient blg && FlipGradients && sprite.FillBrush is CompositionLinearGradientBrush clgb) {
 					FlipGradient(blg, clgb);
 				}
 			}
 			if (StrokeBrush != null) {
 				sprite.StrokeBrush = StrokeBrush.CreateBrush(iefc.Compositor);
-				if (iecvc.Value < 0 && StrokeBrush is Brush_LinearGradient blg && FlipGradients && sprite.StrokeBrush is CompositionLinearGradientBrush clgb) {
+				if (ierc.DataValue < 0 && StrokeBrush is Brush_LinearGradient blg && FlipGradients && sprite.StrokeBrush is CompositionLinearGradientBrush clgb) {
 					FlipGradient(blg, clgb);
 				}
 			}
 			if (!double.IsNaN(CornerRadiusX) && !double.IsNaN(CornerRadiusY)) {
 				rectangle.CornerRadius = new Vector2((float)CornerRadiusX, (float)CornerRadiusY);
 			}
-			if (iefc is IElementRectangleContext ierc) {
-				// Offset and Size are Model units (input side of transform)
-				rectangle.Size = new Vector2((float)ierc.Width, (float)ierc.Height);
-			}
+			// Offset and Size are Model units (input side of transform)
+			rectangle.Size = new Vector2((float)ierc.Width, (float)ierc.Height);
 			// Offset and Transform are managed by the caller
 			return sprite;
 		}
