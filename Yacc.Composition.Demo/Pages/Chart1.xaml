@@ -41,6 +41,7 @@
 		<DataTemplate x:Key="TextBlock">
 			<TextBlock Text="{Binding Text}"/>
 		</DataTemplate>
+		<yacc:AnimationFactory_Default x:Key="Animate"/>
 		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
 			<yacc:ColumnElementFactory_Default.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
@@ -155,16 +156,16 @@
 				<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2, Mode=OneWay}" />
 			</yacc:Chart.DataSources>
 			<yacc:Chart.Components>
-				<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}"
+				<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
 					BarWidth=".24" BarOffset="0" />
-				<yacc:ColumnSeries Name="BarSeries2" DataSourceName="Source1" ElementFactory="{StaticResource Column2Style}"
+				<yacc:ColumnSeries Name="BarSeries2" DataSourceName="Source1" ElementFactory="{StaticResource Column2Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value2"
 					BarWidth=".24" BarOffset=".25" />
-				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}"
+				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3"
 					BarWidth=".24" BarOffset=".5" />
-				<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}"
+				<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
 					BarWidth=".24" BarOffset=".75" />
 				<!--
@@ -177,9 +178,9 @@
 				<yacc:LineSeries Name="LineSeries3" DataSourceName="Source2" ElementFactory="{StaticResource Line3Style}"
 					CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value1"
 					LineOffset="1" />
-				-->
 				<yacc:ValueLabels SourceName="BarSeries2" LabelFormatString="F2" x:Name="v_colv2" LabelTemplate="{StaticResource TextBlock}"
 					PlacementOffset="0,1" LabelOffset="0,-1" LabelStyle="{StaticResource BigLabels}" />
+				-->
 				<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 				<!--
 				<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
