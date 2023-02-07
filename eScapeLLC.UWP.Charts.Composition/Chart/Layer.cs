@@ -210,7 +210,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Access to the <see cref="Canvas"/>.
 		/// </summary>
 		internal readonly Canvas canvas;
-		readonly int zindex;
 		#endregion
 		#region ctor
 		/// <summary>
@@ -219,10 +218,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="canvas">Target canvas.</param>
 		public CompositionLayer(Canvas canvas, int zindex) {
 			this.canvas = canvas;
-			this.zindex = zindex;
 			canvas.SetValue(Canvas.ZIndexProperty, zindex);
-			var c = Window.Current.Compositor;
-			var shape = c.CreateShapeVisual();
+			var cc = Window.Current.Compositor;
+			var shape = cc.CreateShapeVisual();
 			shape.Size = new Vector2((float)canvas.ActualWidth, (float)canvas.ActualHeight);
 			ElementCompositionPreview.SetElementChildVisual(canvas, shape);
 		}
