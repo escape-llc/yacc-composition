@@ -11,19 +11,18 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Markup;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	public class LineSeries : CategoryValueSeries,
+	public class LineSeries_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
+		public LineSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
+		}
+	}
+	public class LineSeries : CategoryValueSeries<LineSeries_ItemState>,
 		IRequireEnterLeave, IProvideSeriesItemValues,
 		IConsumer<Phase_RenderTransforms> {
 		static LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
 		#region inner
-		public class Series_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
-			public Series_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
-			}
-		}
 		#endregion
 		#region ctor
 		public LineSeries() {
-			ItemState = new List<ItemStateCore>();
 		}
 		#endregion
 		#region properties
@@ -40,15 +39,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		protected Matrix3x2 Model { get; set; }
 		/// <summary>
-		/// Data needed for current state.
-		/// </summary>
-		protected List<ItemStateCore> ItemState { get; set; }
-		/// <summary>
 		/// Holds all the shapes for this series.
 		/// </summary>
 		protected CompositionContainerShape Container { get; set; }
 		#endregion
 		#region data source operations
+		protected override void ModelComplete() {
+		}
+		protected override void ComponentExtents() {
+		}
 		protected override void Reset(DataSource_Reset dsr) {
 			var itemstate = new List<ItemStateCore>();
 			var shape = GetShape(dsr.Items, itemstate);
@@ -56,7 +55,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			for (int ix = 0; ix < itemstate.Count; ix++) {
-				Series_ItemState state = itemstate[ix] as Series_ItemState;
+				LineSeries_ItemState state = itemstate[ix] as LineSeries_ItemState;
 				if (state == null) continue;
 				UpdateLimits(ix, state.DataValue, 0);
 				// no geometry updates
@@ -92,7 +91,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			// appears to not work when AnyCPU is used
 			CanvasPathBuilder builder = new CanvasPathBuilder(new CanvasDevice());
 			using (builder) {
-				Series_ItemState prev = null;
+				LineSeries_ItemState prev = null;
 				for (int ix = 0; ix < items.Count; ix++) {
 					var state = CreateState(builder, ix, prev == null, items[ix]);
 					itemstate.Add(state);
@@ -101,13 +100,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				builder.EndFigure(CanvasFigureLoop.Open);
 				var geom = CanvasGeometry.CreatePath(builder);
 				var path = new CompositionPath(geom);
-				var ctx = new PathGeometryContext(Container.Compositor, itemstate.Count, LineOffset, double.NaN, CategoryAxis, ValueAxis, path);
+				var bogus = new LineSeries_ItemState(itemstate.Count, LineOffset, double.NaN);
+				var ctx = new PathGeometryContext(Container.Compositor, bogus, CategoryAxis, ValueAxis, path);
 				var shape = ElementFactory.CreateElement(ctx);
 				shape.Comment = $"{Name}";
 				return shape;
 			}
 		}
-		Series_ItemState CreateState(CanvasPathBuilder cpb, int index, bool beginf, object item) {
+		protected override LineSeries_ItemState CreateState(int index, object item) {
+			throw new System.NotImplementedException();
+		}
+		LineSeries_ItemState CreateState(CanvasPathBuilder cpb, int index, bool beginf, object item) {
 			if (ValueBinding.GetDouble(item, out double? value_val)) {
 				// short-circuit if it's NaN or NULL
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
@@ -124,26 +127,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				else {
 					cpb.AddLine(pt);
 				}
-				var istate = new Series_ItemState(index, LineOffset, value_val.Value);
+				var istate = new LineSeries_ItemState(index, LineOffset, value_val.Value);
 				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
 				return istate;
 			}
 			return null;
 		}
 		protected override void UpdateModelTransform() {
+			Matrix3x2 model;
 			if (CategoryAxis.Orientation == AxisOrientation.Horizontal) {
-				Model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
+				model = MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
 			}
 			else {
-				Model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
+				model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			}
+			Model = model;
 			Layer.Use(sv => {
 				if(sv.Shapes.Count > 0 && sv.Shapes[0] is CompositionContainerShape ccs) {
 					foreach (var shx in ccs.Shapes) shx.TransformMatrix = Model;
 				}
 			});
 			// not using Element
-			foreach (Series_ItemState item in ItemState) {
+			foreach (LineSeries_ItemState item in ItemState) {
 				// apply new model transform
 				if (item.Element != null) {
 					item.Element.TransformMatrix = Model;
