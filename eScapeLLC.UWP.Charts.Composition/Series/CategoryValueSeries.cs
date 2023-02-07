@@ -1,4 +1,5 @@
-﻿using eScape.Host;
+﻿using eScape.Core;
+using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
@@ -7,17 +8,18 @@ using System.Numerics;
 namespace eScapeLLC.UWP.Charts.Composition {
 	public abstract class CategoryValueSeries : ChartComponent,
 		IConsumer<Phase_ComponentExtents>, IConsumer<Axis_Extents>, IConsumer<Phase_DataSourceOperation> {
+		static LogTools.Flag _trace = LogTools.Add("CategoryValueSeries", LogTools.Level.Error);
 		#region properties
 		/// <summary>
 		/// MUST match the name of a data source.
 		/// </summary>
 		public string DataSourceName { get; set; }
 		/// <summary>
-		/// MUST match the name of an axis.
+		/// MUST match the name of an axis.  Mapped to Component_1.
 		/// </summary>
 		public string CategoryAxisName { get; set; }
 		/// <summary>
-		/// MUST match the name of an axis.
+		/// MUST match the name of an axis.  Mapped to Component_2.
 		/// </summary>
 		public string ValueAxisName { get; set; }
 		/// <summary>
@@ -33,13 +35,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public IElementFactory ElementFactory { get; set; }
 		/// <summary>
-		/// The minimum value seen.
+		/// How to create animations for series and its elements.
 		/// </summary>
-		public double Component2Minimum { get; protected set; } = double.NaN;
-		/// <summary>
-		/// The maximum value seen.
-		/// </summary>
-		public double Component2Maximum { get; protected set; } = double.NaN;
+		public IAnimationFactory AnimationFactory { get; set; }
 		/// <summary>
 		/// The minimum category (value) seen.
 		/// </summary>
@@ -49,10 +47,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public double Component1Maximum { get; protected set; } = double.NaN;
 		/// <summary>
+		/// The minimum value seen.
+		/// </summary>
+		public double Component2Minimum { get; protected set; } = double.NaN;
+		/// <summary>
+		/// The maximum value seen.
+		/// </summary>
+		public double Component2Maximum { get; protected set; } = double.NaN;
+		/// <summary>
+		/// Range of the values or <see cref="double.NaN"/> if <see cref="UpdateLimits(double, double)"/>or <see cref="UpdateLimits(double, double[])"/> was never called.
+		/// </summary>
+		public double Component1Range { get { return double.IsNaN(Component1Minimum) || double.IsNaN(Component1Maximum) ? double.NaN : Component1Maximum - Component1Minimum; } }
+		/// <summary>
 		/// Range of the values or <see cref="double.NaN"/> if <see cref="UpdateLimits(double, double)"/>or <see cref="UpdateLimits(double, double[])"/> was never called.
 		/// </summary>
 		public double Component2Range { get { return double.IsNaN(Component2Minimum) || double.IsNaN(Component2Maximum) ? double.NaN : Component2Maximum - Component2Minimum; } }
-		public double Component1Range { get { return double.IsNaN(Component1Minimum) || double.IsNaN(Component1Maximum) ? double.NaN : Component1Maximum - Component1Minimum; } }
 		#endregion
 		#region internal
 		protected Axis_Extents CategoryAxis { get; set; }
@@ -200,15 +209,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			switch (message.Operation) {
 				case DataSource_Add add:
+					_trace.Verbose($"{Name} dso-add ds:{add.Name} front:{add.AtFront} ct:{add.NewItems.Count}");
 					Add(add);
 					break;
 				case DataSource_Reset reset:
+					_trace.Verbose($"{Name} dso-reset ds:{reset.Name} ct:{reset.Items.Count}");
 					Reset(reset);
 					break;
 				case DataSource_SlidingWindow sw:
+					_trace.Verbose($"{Name} dso-sw ds:{sw.Name} ct:{sw.NewItems.Count}");
 					SlidingWindow(sw);
 					break;
 				case DataSource_Remove remove:
+					_trace.Verbose($"{Name} dso-remove ds:{remove.Name} front:{remove.AtFront} ct:{remove.Count}");
 					Remove(remove);
 					break;
 			}
