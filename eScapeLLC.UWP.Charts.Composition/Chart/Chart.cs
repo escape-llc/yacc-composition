@@ -398,13 +398,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 			}
 			// Phase IVa: axes receive extents from components broadcast on EB
+			_trace.Verbose($"phase-component-extents");
 			Bus.Consume(new Phase_ComponentExtents(ls, Bus));
 			// Phase IVb: components receive final extents from axes broadcast on EB
+			_trace.Verbose($"phase-axis-extents");
 			Bus.Consume(new Phase_AxisExtents(ls, Bus));
 			// Phase V: render axes and decorations (IRequireRender)
+			_trace.Verbose($"phase-model-complete");
 			Bus.Consume(new Phase_ModelComplete(ls, Surface, Components, DataContext));
 			// Phase VI: configure all transforms
+			_trace.Verbose($"phase-transforms");
 			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
+			_trace.Verbose($"full ends");
 		}
 		/// <summary>
 		/// Top-level render components.
