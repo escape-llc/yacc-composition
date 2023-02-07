@@ -243,12 +243,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Release the element.
 		/// </summary>
-		public virtual void ResetElement() { Element = null; }
+		public virtual void ResetElement() { Element?.Dispose(); Element = null; }
 		/// <summary>
 		/// Accept new element.
 		/// </summary>
 		/// <param name="el">New element.</param>
-		public virtual void SetElement(E el) { Element = el; }
+		public virtual void SetElement(E el) { Element?.Dispose(); Element = el; }
 		/// <summary>
 		/// Calculate offset for Column series sprite.
 		/// If the value is negative, adjust the vertical offset by that amount.
