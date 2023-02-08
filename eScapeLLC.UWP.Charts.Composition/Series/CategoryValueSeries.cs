@@ -88,7 +88,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// MUST be NULL after processing.
 		/// This is because the "end" phases execute regardless of the <see cref="DataSource"/> that caused it.
 		/// </summary>
-		protected IEnumerable<(ItemStatus st, S state)> Current { get; set; }
+		protected IEnumerable<(ItemStatus st, S state)> Pending { get; set; }
 		#endregion
 		#region ctor
 		public CategoryValueSeries() {
@@ -193,7 +193,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected virtual void Reset(DataSource_Reset reset) {
 			IEnumerable<(ItemStatus st, S state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as S));
 			IEnumerable<(ItemStatus st, S state)> enter = Entering(reset.Items);
-			Current = exit.Concat(enter);
+			Pending = exit.Concat(enter).ToList();
 		}
 		/// <summary>
 		/// Sliding window exits and enters same number of elements on head/tail respectively.
@@ -203,7 +203,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, S state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as S));
 			IEnumerable<(ItemStatus st, S state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as S));
 			IEnumerable<(ItemStatus st, S state)> enter = Entering(slidingWindow.NewItems);
-			Current = exit.Concat(live).Concat(enter);
+			Pending = exit.Concat(live).Concat(enter).ToList();
 		}
 		/// <summary>
 		/// Add enters the given element(s) at the given end.
@@ -213,7 +213,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			IEnumerable<(ItemStatus st, S state)> live = ItemState.Select(xx => (ItemStatus.Live, xx as S));
 			IEnumerable<(ItemStatus st, S state)> enter = Entering(add.NewItems);
 			IEnumerable<(ItemStatus st, S state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
-			Current = final;
+			Pending = final.ToList();
 		}
 		/// <summary>
 		/// Remove exits the given number of elements from indicated end.
@@ -223,12 +223,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (remove.AtFront) {
 				IEnumerable<(ItemStatus st, S state)> exit = ItemState.Take(remove.Count).Select(xx => (ItemStatus.Exit, xx as S));
 				IEnumerable<(ItemStatus st, S state)> live = ItemState.Skip(remove.Count).Select(xx => (ItemStatus.Live, xx as S));
-				Current = exit.Concat(live);
+				Pending = exit.Concat(live).ToList();
 			}
 			else {
 				IEnumerable<(ItemStatus st, S state)> live = ItemState.Take(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Live, xx as S));
 				IEnumerable<(ItemStatus st, S state)> exit = ItemState.Skip(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Exit, xx as S));
-				Current = live.Concat(exit);
+				Pending = live.Concat(exit).ToList();
 			}
 		}
 		/// <summary>
