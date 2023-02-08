@@ -246,23 +246,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		protected override void ComponentExtents() {
-			if (Current == null) return;
+			if (Pending == null) return;
 			_trace.Verbose($"{Name} component-extents");
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			int index = 0;
-			foreach(var (st, state) in Current.Where(xx => xx.st != ItemStatus.Exit)) {
+			foreach(var (st, state) in Pending.Where(xx => xx.st != ItemStatus.Exit)) {
 				UpdateLimits(index, state.DataValue, 0);
 				index++;
 			}
 			UpdateLimits(index);
 		}
 		protected override void ModelComplete() {
-			if (Current == null) return;
+			if (Pending == null) return;
 			if (Container == null) return;
 			_trace.Verbose($"{Name} model-complete");
-			UpdateCore(Current);
-			Current = null;
+			try {
+				UpdateCore(Pending);
+			}
+			finally {
+				Pending = null;
+			}
 		}
 		#endregion
 		#region handlers
