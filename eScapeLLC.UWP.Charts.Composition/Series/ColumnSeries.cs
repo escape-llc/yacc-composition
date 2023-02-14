@@ -92,7 +92,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y} to:{offset.X},{offset.Y}");
 				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis);
+					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
 					AnimationFactory.StartAnimation("Offset", ctx, item.Element);
 				}
 				else {
@@ -102,36 +102,36 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IListController<>
-		void IListController<ColumnSeries_ItemState>.LiveItem(int index, ColumnSeries_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
 			if (elementSelected && state.Element == null) {
 				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
-				Entering(state);
+				Entering(state, it);
 				UpdateStyle(state);
 				UpdateOffset(state);
 			}
 			else if (!elementSelected && state.Element != null) {
-				Exiting(state);
+				Exiting(state, it);
 			}
 			else {
 				UpdateStyle(state);
 				UpdateOffset(state);
 			}
 		}
-		void IListController<ColumnSeries_ItemState>.EnteringItem(int index, ColumnSeries_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			state.Reindex(index);
 			bool elementSelected2 = IsSelected(state);
 			if (elementSelected2) {
 				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
-				Entering(state);
+				Entering(state, it);
 				UpdateStyle(state);
 				UpdateOffset(state);
 			}
 		}
-		void IListController<ColumnSeries_ItemState>.ExitingItem(int index, ColumnSeries_ItemState state) {
+		void IListController<ColumnSeries_ItemState>.ExitingItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			if (state.Element != null) {
-				Exiting(state);
+				Exiting(state, it);
 			}
 		}
 		#endregion
@@ -174,10 +174,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Item is entering the list.
 		/// </summary>
 		/// <param name="item"></param>
-		protected virtual void Entering(ColumnSeries_ItemState item) {
+		protected virtual void Entering(ColumnSeries_ItemState item, ItemTransition it) {
 			if (item != null && item.Element != null) {
 				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis);
+					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
 					AnimationFactory.StartAnimation("Enter", ctx, item.Element, ca => {
 						Container.Shapes.Add(item.Element);
 					});
@@ -191,10 +191,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Item is exiting the list.
 		/// </summary>
 		/// <param name="item"></param>
-		protected virtual void Exiting(ColumnSeries_ItemState item) {
+		protected virtual void Exiting(ColumnSeries_ItemState item, ItemTransition it) {
 			if (item != null && item.Element != null) {
 				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis);
+					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
 					AnimationFactory.StartAnimation("Exit", ctx, item.Element, ca => {
 						Container.Shapes.Remove(item.Element);
 						item.ResetElement();
@@ -215,7 +215,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Core part of the update cycle.
 		/// </summary>
 		/// <param name="items">Sequence of item states.</param>
-		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, ColumnSeries_ItemState state)> items) {
+		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, ItemTransition it, ColumnSeries_ItemState state)> items) {
 			var itemstate = new List<ItemStateCore>();
 			ProcessItems<ColumnSeries_ItemState>(items, this, itemstate);
 			ItemState = itemstate;
@@ -251,7 +251,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			int index = 0;
-			foreach(var (st, state) in Pending.Where(xx => xx.st != ItemStatus.Exit)) {
+			foreach(var (st, it, state) in Pending.Where(xx => xx.st != ItemStatus.Exit)) {
 				UpdateLimits(index, state.DataValue, 0);
 				index++;
 			}
