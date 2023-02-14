@@ -7,15 +7,15 @@
   IgnorableNamespaces="uap mp">
 
   <Identity
-    Name="784cd4b0-c279-44ce-86e8-c9c106fc0d38"
-    Publisher="CN=johng"
+    Name="eScapeTechnologyLLC.YaccCompositionDemo"
+    Publisher="CN=3D68122A-CFAD-4771-A47D-34317340F18F"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="784cd4b0-c279-44ce-86e8-c9c106fc0d38" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>Yacc.Composition.Demo</DisplayName>
-    <PublisherDisplayName>johng</PublisherDisplayName>
+    <DisplayName>Yacc Composition Demo</DisplayName>
+    <PublisherDisplayName>eScape Technology LLC</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -32,18 +32,14 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="Yacc.Composition.Demo.App">
       <uap:VisualElements
-        DisplayName="Yacc.Composition.Demo"
+        DisplayName="Yacc Composition Demo"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="Yacc.Composition.Demo"
+        Description="Yet Another Chart Component on Composition Layer Demo Application"
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square71x71Logo="Assets\SmallTile.png" Square310x310Logo="Assets\LargeTile.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />
       </uap:VisualElements>
     </Application>
   </Applications>
-
-  <Capabilities>
-    <Capability Name="internetClient" />
-  </Capabilities>
 </Package>
