@@ -88,7 +88,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// MUST be NULL after processing.
 		/// This is because the "end" phases execute regardless of the <see cref="DataSource"/> that caused it.
 		/// </summary>
-		protected IEnumerable<(ItemStatus st, S state)> Pending { get; set; }
+		protected IEnumerable<(ItemStatus st, ItemTransition it, S state)> Pending { get; set; }
 		#endregion
 		#region ctor
 		public CategoryValueSeries() {
@@ -173,10 +173,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="items">Item source.</param>
 		/// <param name="createstate">State factory method.</param>
 		/// <returns>New instance.</returns>
-		protected virtual IEnumerable<(ItemStatus st, S state)> Entering(System.Collections.IList items) {
+		protected virtual IEnumerable<(ItemStatus st, ItemTransition it, S state)> Entering(System.Collections.IList items, ItemTransition it) {
 			for (int ix = 0; ix < items.Count; ix++) {
 				var state = CreateState(ix, items[ix]);
-				yield return (ItemStatus.Enter, state);
+				yield return (ItemStatus.Enter, it, state);
 			}
 		}
 		/// <summary>
@@ -191,8 +191,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="reset"></param>
 		protected virtual void Reset(DataSource_Reset reset) {
-			IEnumerable<(ItemStatus st, S state)> exit = ItemState.Select(xx => (ItemStatus.Exit, xx as S));
-			IEnumerable<(ItemStatus st, S state)> enter = Entering(reset.Items);
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(reset.Items, ItemTransition.Tail);
 			Pending = exit.Concat(enter).ToList();
 		}
 		/// <summary>
@@ -200,9 +200,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="slidingWindow"></param>
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			IEnumerable<(ItemStatus st, S state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as S));
-			IEnumerable<(ItemStatus st, S state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as S));
-			IEnumerable<(ItemStatus st, S state)> enter = Entering(slidingWindow.NewItems);
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(slidingWindow.NewItems, ItemTransition.Tail);
 			Pending = exit.Concat(live).Concat(enter).ToList();
 		}
 		/// <summary>
@@ -210,9 +210,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="add"></param>
 		protected virtual void Add(DataSource_Add add) {
-			IEnumerable<(ItemStatus st, S state)> live = ItemState.Select(xx => (ItemStatus.Live, xx as S));
-			IEnumerable<(ItemStatus st, S state)> enter = Entering(add.NewItems);
-			IEnumerable<(ItemStatus st, S state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(add.NewItems, add.AtFront ? ItemTransition.Head : ItemTransition.Tail);
+			IEnumerable<(ItemStatus st, ItemTransition it, S state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
 			Pending = final.ToList();
 		}
 		/// <summary>
@@ -221,13 +221,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="remove"></param>
 		protected virtual void Remove(DataSource_Remove remove) {
 			if (remove.AtFront) {
-				IEnumerable<(ItemStatus st, S state)> exit = ItemState.Take(remove.Count).Select(xx => (ItemStatus.Exit, xx as S));
-				IEnumerable<(ItemStatus st, S state)> live = ItemState.Skip(remove.Count).Select(xx => (ItemStatus.Live, xx as S));
+				IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Take(remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
+				IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Skip(remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
 				Pending = exit.Concat(live).ToList();
 			}
 			else {
-				IEnumerable<(ItemStatus st, S state)> live = ItemState.Take(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Live, xx as S));
-				IEnumerable<(ItemStatus st, S state)> exit = ItemState.Skip(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Exit, xx as S));
+				IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Take(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
+				IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Skip(ItemState.Count - remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Tail,  xx as S));
 				Pending = live.Concat(exit).ToList();
 			}
 		}
