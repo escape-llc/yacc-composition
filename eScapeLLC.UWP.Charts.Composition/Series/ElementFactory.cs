@@ -48,11 +48,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public interface IElementCategoryValueContext {
 		/// <summary>
-		/// Information about category axis.
+		/// Information about category axis C_1.
 		/// </summary>
 		Axis_Extents CategoryAxis { get; }
 		/// <summary>
-		/// Information about value axis.
+		/// Information about value axis C_2.
 		/// </summary>
 		Axis_Extents ValueAxis { get; }
 		/// <summary>
@@ -69,19 +69,23 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		CompositionPath Path { get; }
 	}
+	/// <summary>
+	/// Additional information about how element is entering/leaving chart.
+	/// </summary>
 	public interface IElementDataOperation {
 		/// <summary>
-		/// True: inserting at the lowest-indexed end.
-		/// False: inserting at the highest-indexed end.
+		/// Head: occurs at the lowest-indexed end.
+		/// Tail: occurs at the highest-indexed end.
+		/// None: changing state in-place.
 		/// <para/>
 		/// Used to compute spawn points etc.
 		/// </summary>
-		bool AtFront { get; set; }
+		ItemTransition Transition { get; }
 	}
 	/// <summary>
 	/// Default context for basic use case in category/value scenario.
 	/// </summary>
-	public class CategoryValueContext : IElementFactoryContext, IElementCategoryValueContext {
+	public class CategoryValueContext : IElementFactoryContext, IElementCategoryValueContext, IElementDataOperation {
 		/// <summary>
 		/// Use for creating composition objects.
 		/// </summary>
@@ -95,11 +99,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public Axis_Extents ValueAxis { get; private set; }
 		public ISeriesItemCategoryValue Item { get; private set; }
-		public CategoryValueContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va) {
+		public ItemTransition Transition { get; private set; }
+		public CategoryValueContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition transition) {
 			Compositor = cx;
 			Item = isicv;
 			CategoryAxis = ca;
 			ValueAxis = va;
+			Transition = transition;
 		}
 	}
 	public class DefaultContext : IElementFactoryContext, IElementExtentContext {
@@ -142,7 +148,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Context for creating paths.
 	/// </summary>
 	public class PathGeometryContext : CategoryValueContext, IElementCompositionPath {
-		public PathGeometryContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, CompositionPath path) : base(cx, isicv, ca, va) {
+		public PathGeometryContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition it, CompositionPath path) : base(cx, isicv, ca, va, it) {
 			Path = path;
 		}
 		/// <summary>
@@ -161,9 +167,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>New instance.</returns>
 		CompositionShape CreateElement(IElementFactoryContext iefc);
 	}
+	/// <summary>
+	/// Ability to animate series elements.
+	/// </summary>
 	public interface IAnimationFactory {
+		/// <summary>
+		/// Prepare resources.
+		/// </summary>
+		/// <param name="cc">Use to acquire resources.</param>
 		void Prepare(Compositor cc);
+		/// <summary>
+		/// Release resources.
+		/// </summary>
+		/// <param name="cc"></param>
 		void Unprepare(Compositor cc);
+		/// <summary>
+		/// Start the indicated animation (sequence).
+		/// </summary>
+		/// <param name="key">Enter,Exit,Transform,Offset.</param>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="cfg">Callback to act on the <paramref name="co"/>.  Enter: add to VT.  Exit: remove from VT. Transform: configure animation.</param>
 		void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
 	}
