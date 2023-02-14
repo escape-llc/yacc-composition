@@ -149,7 +149,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				item.ResetElement();
 			}
 		}
-		void IListController<Axis_ItemState>.EnteringItem(int index, Axis_ItemState item) {
+		void IListController<Axis_ItemState>.EnteringItem(int index, ItemTransition it, Axis_ItemState item) {
 			item.Reindex(index);
 			bool elementSelected2 = IsSelected(item);
 			if (elementSelected2) {
@@ -158,7 +158,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			UpdateStyle(item);
 			Entering(item);
 		}
-		void IListController<Axis_ItemState>.LiveItem(int index, Axis_ItemState item) {
+		void IListController<Axis_ItemState>.LiveItem(int index, ItemTransition it, Axis_ItemState item) {
 			item.Reindex(index);
 			bool elementSelected = IsSelected(item);
 			if (elementSelected && item.Element == null) {
@@ -170,53 +170,53 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			UpdateStyle(item);
 		}
-		void IListController<Axis_ItemState>.ExitingItem(int index, Axis_ItemState item) {
+		void IListController<Axis_ItemState>.ExitingItem(int index, ItemTransition it, Axis_ItemState item) {
 			if (item.Element != null) {
 				Exiting(item);
 			}
 		}
 		#endregion
 		#region virtual data source handlers
-		IEnumerable<(ItemStatus st, Axis_ItemState state)> Entering(System.Collections.IList items) {
+		IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> Entering(System.Collections.IList items, ItemTransition it) {
 			for (int ix = 0; ix < items.Count; ix++) {
 				var state = CreateState(ix, items[ix]);
-				yield return (ItemStatus.Enter, state);
+				yield return (ItemStatus.Enter, it, state);
 			}
 		}
 		protected virtual void Reset(DataSource_Reset dsr) {
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(dsr.Items);
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(dsr.Items, ItemTransition.Tail);
 			var itemstate = new List<ItemStateCore>();
 			ProcessItems<Axis_ItemState>(exit.Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(slidingWindow.NewItems);
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(slidingWindow.NewItems, ItemTransition.Tail);
 			var itemstate = new List<ItemStateCore>();
 			ProcessItems<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
 			AxisLabels = itemstate;
 		}
 		protected virtual void Add(DataSource_Add add) {
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> enter = Entering(add.NewItems);
-			IEnumerable<(ItemStatus st, Axis_ItemState state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(add.NewItems, add.AtFront ? ItemTransition.Head : ItemTransition.Tail);
+			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
 			var itemstate = new List<ItemStateCore>();
 			ProcessItems<Axis_ItemState>(final, this, itemstate);
 			AxisLabels = itemstate;
 		}
 		protected virtual void Remove(DataSource_Remove remove) {
 			if (remove.AtFront) {
-				IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Take(remove.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
-				IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Skip(remove.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Take(remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Skip(remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
 				var itemstate = new List<ItemStateCore>();
 				ProcessItems<Axis_ItemState>(exit.Concat(live), this, itemstate);
 				AxisLabels = itemstate;
 			}
 			else {
-				IEnumerable<(ItemStatus st, Axis_ItemState state)> live = AxisLabels.Take(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Live, xx as Axis_ItemState));
-				IEnumerable<(ItemStatus st, Axis_ItemState state)> exit = AxisLabels.Skip(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Exit, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Take(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
+				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Skip(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Tail, xx as Axis_ItemState));
 				var itemstate = new List<ItemStateCore>();
 				ProcessItems<Axis_ItemState>(live.Concat(exit), this, itemstate);
 				AxisLabels = itemstate;
