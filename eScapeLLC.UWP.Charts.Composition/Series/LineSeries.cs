@@ -101,7 +101,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				var geom = CanvasGeometry.CreatePath(builder);
 				var path = new CompositionPath(geom);
 				var bogus = new LineSeries_ItemState(itemstate.Count, LineOffset, double.NaN);
-				var ctx = new PathGeometryContext(Container.Compositor, bogus, CategoryAxis, ValueAxis, path);
+				var ctx = new PathGeometryContext(Container.Compositor, bogus, CategoryAxis, ValueAxis, ItemTransition.None, path);
 				var shape = ElementFactory.CreateElement(ctx);
 				shape.Comment = $"{Name}";
 				return shape;
