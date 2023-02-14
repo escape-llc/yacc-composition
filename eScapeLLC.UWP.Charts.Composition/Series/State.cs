@@ -12,18 +12,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public enum ItemStatus {
 		/// <summary>
-		/// Item is exiting the Visual Tree.
-		/// </summary>
-		Exit,
-		/// <summary>
 		/// Item is "live" i.e. already tracking.
 		/// </summary>
 		Live,
 		/// <summary>
 		/// Item is entering Visual Tree.
 		/// </summary>
-		Enter
+		Enter,
+		/// <summary>
+		/// Item is exiting the Visual Tree.
+		/// </summary>
+		Exit,
 	};
+	/// <summary>
+	/// Indicate which end of the list operation occurs.
+	/// Only meaningful for Enter and Exit items.
+	/// </summary>
+	public enum ItemTransition {
+	 None,
+	 Head,
+	 Tail
+	}
 	#region ISeriesItem
 	/// <summary>
 	/// Entry point to series item data.
