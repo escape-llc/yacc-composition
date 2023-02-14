@@ -33,19 +33,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="index">Current index; MAY be different than the item's index.</param>
 		/// <param name="item">Target item.</param>
-		void EnteringItem(int index, S item);
+		void EnteringItem(int index, ItemTransition it, S item);
 		/// <summary>
 		/// This item is exiting.
 		/// </summary>
 		/// <param name="index">Current (exiting) index; MAY be different than the item's index.</param>
 		/// <param name="item">Target item.</param>
-		void ExitingItem(int index, S item);
+		void ExitingItem(int index, ItemTransition it, S item);
 		/// <summary>
 		/// This item is "live" meaning it already existed before the operation started.
 		/// </summary>
 		/// <param name="index">Current index; MAY be different than the item's index.</param>
 		/// <param name="item">Target item.</param>
-		void LiveItem(int index, S item);
+		void LiveItem(int index, ItemTransition it, S item);
 	}
 	#endregion
 	#region ChartComponent
@@ -93,23 +93,23 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="list">Instruction list.</param>
 		/// <param name="itemstate">Output list. Accumulates Live and Enter items.</param>
-		public static void ProcessItems<S>(IEnumerable<(ItemStatus st, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
+		public static void ProcessItems<S>(IEnumerable<(ItemStatus st, ItemTransition it, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
 			int index = 0;
 			int xindex = 0;
-			foreach ((ItemStatus st, S state) in list) {
+			foreach ((ItemStatus st, ItemTransition it, S state) in list) {
 				if (state == null) continue;
 				switch (st) {
 					case ItemStatus.Exit:
-						ilc.ExitingItem(xindex, state);
+						ilc.ExitingItem(xindex, it, state);
 						xindex++;
 						break;
 					case ItemStatus.Live:
-						ilc.LiveItem(index, state);
+						ilc.LiveItem(index, it, state);
 						itemstate.Add(state);
 						index++;
 						break;
 					case ItemStatus.Enter:
-						ilc.EnteringItem(index, state);
+						ilc.EnteringItem(index, it, state);
 						itemstate.Add(state);
 						index++;
 						break;
