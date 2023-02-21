@@ -297,7 +297,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Compositor compositor = Window.Current.Compositor;
 			Container = compositor.CreateContainerShape();
 			Container.Comment = $"container_{Name}";
-			Layer = icelc.CreateCompositionLayer(Container);
+			Layer = icelc.CreateLayer(Container);
 			if(AnimationFactory != null) {
 				AnimationFactory.Prepare(compositor);
 			}
@@ -309,7 +309,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				AnimationFactory.Unprepare(Window.Current.Compositor);
 			}
 			Container = null;
-			icelc.DeleteCompositionLayer(Layer);
+			icelc.DeleteLayer(Layer);
 			Layer = null;
 		}
 		#endregion

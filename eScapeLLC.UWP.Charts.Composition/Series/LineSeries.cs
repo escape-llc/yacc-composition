@@ -167,13 +167,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Compositor compositor = Window.Current.Compositor;
 			Container = compositor.CreateContainerShape();
 			Container.Comment = $"container_{Name}";
-			Layer = icelc.CreateCompositionLayer(Container);
+			Layer = icelc.CreateLayer(Container);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName} {ValueAxis} c:{CategoryAxisName} {CategoryAxis} d:{DataSourceName}");
 		}
 		public void Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
 			Container = null;
-			icelc.DeleteCompositionLayer(Layer);
+			icelc.DeleteLayer(Layer);
 			Layer = null;
 		}
 		#endregion
