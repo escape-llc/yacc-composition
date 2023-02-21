@@ -155,11 +155,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 						case AxisOrientation.Vertical:
 							switch (ica.Side) {
 								case Side.Right:
-									tx.Add(kv.Key, new Rect(kv.Value.Left, kv.Value.Top, kv.Value.Width, RemainingRect.Height));
+									tx.Add(kv.Key, new Rect(kv.Value.Left, RemainingRect.Top, kv.Value.Width, RemainingRect.Height));
 									break;
 								case Side.Left:
 									// TODO fix
-									tx.Add(kv.Key, new Rect(kv.Value.Left, kv.Value.Top, kv.Value.Width, RemainingRect.Height));
+									tx.Add(kv.Key, new Rect(kv.Value.Left, RemainingRect.Top, kv.Value.Width, RemainingRect.Height));
 									break;
 							}
 							break;
@@ -310,7 +310,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			icl.Clear();
 			Layers.Remove(icl);
 		}
-		IChartCompositionLayer IChartEnterLeaveContext.CreateCompositionLayer(params CompositionShape[] cos) {
+		IChartCompositionLayer IChartEnterLeaveContext.CreateLayer(params CompositionShape[] cos) {
 			var local = new Canvas() {
 				HorizontalAlignment = HorizontalAlignment.Stretch,
 				VerticalAlignment = VerticalAlignment.Stretch,
@@ -329,7 +329,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Compositions.Add(ccl);
 			return ccl;
 		}
-		void IChartEnterLeaveContext.DeleteCompositionLayer(IChartCompositionLayer icl) {
+		void IChartEnterLeaveContext.DeleteLayer(IChartCompositionLayer icl) {
 			var local = (icl as CompositionLayer).canvas;
 			Surface.Children.Remove(local);
 			icl.Clear();
