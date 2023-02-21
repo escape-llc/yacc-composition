@@ -379,14 +379,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		#endregion
-		#region IChartAxis
-		double IChartAxis.For(double value) {
-			return value;
-		}
-		double IChartAxis.ScaleFor(double dimension) {
-			throw new NotImplementedException();
-		}
-		#endregion
 	}
 	#endregion
 }

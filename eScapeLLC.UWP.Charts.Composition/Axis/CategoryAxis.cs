@@ -324,13 +324,5 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return istate;
 		}
 		#endregion
-		#region IChartAxis deprecate add to event
-		double IChartAxis.For(double value) {
-			return value;
-		}
-		double IChartAxis.ScaleFor(double dimension) {
-			throw new NotImplementedException();
-		}
-		#endregion
 	}
 }
