@@ -85,39 +85,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Typically Bottom for Category and Right for Value.
 		/// </summary>
 		Side Side { get; }
-		/// <summary>
-		/// Minimum value or NaN.
-		/// </summary>
-		double Minimum { get; }
-		/// <summary>
-		/// Maximum value or NaN.
-		/// </summary>
-		double Maximum { get; }
-		/// <summary>
-		/// Range or NaN.
-		/// </summary>
-		double Range { get; }
-		/// <summary>
-		/// Reset the limits so axis can re-calculate.
-		/// </summary>
-		void ResetLimits();
-		/// <summary>
-		/// Do bookkeeping for updating limits/range.
-		/// </summary>
-		/// <param name="value">The value.</param>
-		void UpdateLimits(double value);
-		/// <summary>
-		/// Map the value.
-		/// </summary>
-		/// <param name="value">Input (actual) value.</param>
-		/// <returns>Axis-mapped value.</returns>
-		double For(double value);
-		/// <summary>
-		/// Return the "scale" for this axis.
-		/// </summary>
-		/// <param name="dimension">Overall Dimension (in DC).</param>
-		/// <returns>Dimension / Range.</returns>
-		double ScaleFor(double dimension);
 	}
 	#endregion
 	#region IChartLayerCore
@@ -313,12 +280,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Create a composition layer.
 		/// </summary>
 		/// <returns></returns>
-		IChartCompositionLayer CreateCompositionLayer(params CompositionShape[] cos);
+		IChartCompositionLayer CreateLayer(params CompositionShape[] cos);
 		/// <summary>
 		/// Delete given composition layer (and its children).
 		/// </summary>
 		/// <param name="icl"></param>
-		void DeleteCompositionLayer(IChartCompositionLayer icl);
+		void DeleteLayer(IChartCompositionLayer icl);
 	}
 	#endregion
 	#region ChartValidationResult
