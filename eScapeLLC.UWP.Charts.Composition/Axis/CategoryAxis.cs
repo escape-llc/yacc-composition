@@ -12,7 +12,7 @@ using Windows.UI.Xaml.Data;
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon,
 		IRequireEnterLeave, IChartAxis, IListController<CategoryAxis.Axis_ItemState>,
-		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
+		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
 		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
@@ -228,10 +228,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var space = AxisMargin + /*AxisLineThickness + */ (Orientation == AxisOrientation.Horizontal ? MinHeight : MinWidth);
 			message.Context.ClaimSpace(this, Side, space);
 		}
-		void IConsumer<Component_Extents>.Consume(Component_Extents message) {
-			if (message.AxisName != Name) return;
-			Extents(message);
-		}
 		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
@@ -259,6 +255,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		void IConsumer<Phase_AxisExtents>.Consume(Phase_AxisExtents message) {
+			foreach(var xx in message.Extents.Where(ax => ax.AxisName == Name)) {
+				Extents(xx);
+			}
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
 			message.Register(msg);
 		}
@@ -295,10 +294,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				fe = new TextBlock() {
 					HorizontalAlignment = HorizontalAlignment.Left,
 					HorizontalTextAlignment = TextAlignment.Left,
-					VerticalAlignment = VerticalAlignment.Center
+					VerticalAlignment = VerticalAlignment.Center,
 				};
 				ChartComponent.BindTo(text, nameof(TextShim.Text), fe, TextBlock.TextProperty);
 			}
+			fe.TranslationTransition = new Vector3Transition() {
+				Duration = TimeSpan.FromMilliseconds(300),
+				Components = Vector3TransitionComponents.X | Vector3TransitionComponents.Y
+			};
 			if (LabelStyle != null) {
 				BindTo(this, nameof(LabelStyle), fe, FrameworkElement.StyleProperty);
 			}

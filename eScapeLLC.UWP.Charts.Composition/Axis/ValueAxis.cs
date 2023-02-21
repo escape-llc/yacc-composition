@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
-using System.Security.Cryptography;
-using System.ServiceModel.Channels;
 using Windows.Foundation;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
@@ -86,7 +84,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region ValueAxis
 	public class ValueAxis : AxisCommon, IChartAxis, IRequireEnterLeave,
-		IConsumer<Component_Extents>, IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
+		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
 		IConsumer<Phase_ModelComplete>, IConsumer<Phase_RenderTransforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueAxis", LogTools.Level.Error);
 		#region inner
@@ -190,7 +188,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		protected List<ItemStateCore> AxisLabels { get; set; }
 		protected Binding LabelBinding { get; set; }
-		protected Dictionary<string, Component_Extents> ExtentMap { get; set; } = new Dictionary<string, Component_Extents>();
 		#endregion
 		#region ctor
 		public ValueAxis() {
@@ -209,39 +206,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region handlers
-		void IConsumer<Component_Extents>.Consume(Component_Extents message) {
-			if (message.AxisName != Name) return;
-			ExtentMap[message.SeriesName] = message;
-			//Extents(message);
-		}
 		void IConsumer<Phase_InitializeAxes>.Consume(Phase_InitializeAxes message) {
 			ResetLimits();
 			var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
 			message.Register(msg);
 		}
-		(double min, double max) CalculateLimits() {
-			double min = double.NaN;
-			double max = double.NaN;
-			foreach(var kvp in ExtentMap) {
-				var xt = kvp.Value;
-				if (!double.IsNaN(xt.Minimum)) {
-					if (double.IsNaN(LimitMinimum) && (double.IsNaN(min) || xt.Minimum < min)) {
-						min = xt.Minimum;
-					}
-				}
-				if (!double.IsNaN(xt.Maximum)) {
-					if (double.IsNaN(LimitMaximum) && (double.IsNaN(max) || xt.Maximum > max)) {
-						max = xt.Maximum;
-					}
-				}
-			}
-			return (min, max);
-		}
 		void IConsumer<Phase_AxisExtents>.Consume(Phase_AxisExtents message) {
 			ResetLimits();
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) {
-				foreach (var kvp in ExtentMap) {
-					Extents(kvp.Value);
+				foreach(var xx in message.Extents.Where(ax => ax.AxisName == Name)) {
+					Extents(xx);
 				}
 			}
 			var tc = new TickCalculator(Minimum, Maximum);
@@ -299,7 +273,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (!created) {
 					// restore binding if we are using a LabelFormatter
 					if (LabelFormatter != null && LabelStyle != null) {
-						BindTo(this, nameof(LabelStyle), element, FrameworkElement.StyleProperty);
+						BindTo(this, nameof(LabelStyle), element, StyleProperty);
 					}
 				}
 				// default text
@@ -318,9 +292,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 				var shim = new TextShim() { Text = text };
 				element.DataContext = shim;
-				BindTo(shim, nameof(Visibility), element, UIElement.VisibilityProperty);
+				BindTo(shim, nameof(Visibility), element, VisibilityProperty);
 				var state = (Orientation == AxisOrientation.Horizontal
-					? new AxisState_Horizontal(element, tick) as ItemStateCore
+					? new AxisState_Horizontal(element, tick)
 					: new AxisState_Vertical(element, tick) as ItemStateCore);
 				sc.Generated(tick);
 				itemstate.Add(state);
@@ -344,8 +318,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			else {
 				// TODO bring back default template stuff
-				fe = new TextBlock();
+				fe = new TextBlock() {
+					VerticalAlignment = VerticalAlignment.Center,
+				};
 			}
+			fe.TranslationTransition = new Vector3Transition() {
+				Duration = TimeSpan.FromMilliseconds(300),
+				Components = Vector3TransitionComponents.X | Vector3TransitionComponents.Y
+			};
 			if (LabelStyle != null) {
 				BindTo(this, nameof(LabelStyle), fe, FrameworkElement.StyleProperty);
 			}

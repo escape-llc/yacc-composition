@@ -13,7 +13,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	/// <typeparam name="S">Item type. MUST NOT be an Inner Class!</typeparam>
 	public abstract class CategoryValueSeries<S> : ChartComponent,
-		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_ComponentExtents>, IConsumer<Axis_Extents>, IConsumer<Phase_ModelComplete> where S: ItemStateCore {
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete> where S: ItemStateCore {
 		static LogTools.Flag _trace = LogTools.Add("CategoryValueSeries", LogTools.Level.Error);
 		#region properties
 		/// <summary>
@@ -259,25 +259,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			message.Register(new Component_Extents(Name, DataSourceName, ValueAxisName, Component2Minimum, Component2Maximum));
 		}
 		/// <summary>
-		/// Axis extents participate in the Model transform.
-		/// Cache extents for model complete.
-		/// </summary>
-		/// <param name="message"></param>
-		void IConsumer<Axis_Extents>.Consume(Axis_Extents message) {
-			if (message.AxisName == CategoryAxisName) {
-				CategoryAxis = message;
-			}
-			else if (message.AxisName == ValueAxisName) {
-				ValueAxis = message;
-			}
-		}
-		/// <summary>
 		/// Update model transform.  Signal model complete.
 		/// </summary>
 		/// <param name="message"></param>
 		void IConsumer<Phase_ModelComplete>.Consume(Phase_ModelComplete message) {
+			CategoryAxis = message.AxisExtents.SingleOrDefault(ax => ax.AxisName == CategoryAxisName);
 			if (CategoryAxis == null) return;
 			if (double.IsNaN(CategoryAxis.Minimum) || double.IsNaN(CategoryAxis.Maximum)) return;
+			ValueAxis = message.AxisExtents.SingleOrDefault(ax => ax.AxisName == ValueAxisName);
 			if (ValueAxis == null) return;
 			if (double.IsNaN(ValueAxis.Minimum) || double.IsNaN(ValueAxis.Maximum)) return;
 			UpdateModelTransform();
