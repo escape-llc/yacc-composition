@@ -3,8 +3,48 @@ using eScapeLLC.UWP.Charts.Composition.Events;
 using System.Numerics;
 using System;
 using Windows.Foundation;
+using System.Collections.Immutable;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region Axis events
+	/// <summary>
+	/// Send on EB in response to <see cref="Phase_AxisExtents"/>.
+	/// </summary>
+	public class Axis_Extents {
+		public readonly string AxisName;
+		/// <summary>
+		/// MAY be <see cref="double.NaN"/>.
+		/// </summary>
+		public readonly double Minimum;
+		/// <summary>
+		/// MAY be <see cref="double.NaN"/>.
+		/// </summary>
+		public readonly double Maximum;
+		public readonly Side AxisSide;
+		public readonly AxisType Type;
+		public readonly bool Reversed;
+		public readonly double Range;
+		public Axis_Extents(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed) {
+			AxisName = axisName;
+			Minimum = minimum;
+			Maximum = maximum;
+			AxisSide = axisSide;
+			Type = axisType;
+			Reversed = reversed;
+			Range = double.IsNaN(minimum) || double.IsNaN(maximum) ? double.NaN : maximum - minimum;
+		}
+		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
+	}
+	/// <summary>
+	/// Axis with tick values, e.g. a value axis.
+	/// </summary>
+	public sealed class Axis_Extents_TickValues : Axis_Extents {
+		public readonly ImmutableArray<TickState> TickValues;
+		public Axis_Extents_TickValues(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed, ImmutableArray<TickState> tvs) : base(axisName, minimum, maximum, axisSide, axisType, reversed) {
+			TickValues = tvs;
+		}
+	}
+	#endregion
 	#region IAxisLabelSelectorContext
 	/// <summary>
 	/// Base context for axis label selector/formatter.
@@ -27,15 +67,27 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region AxisCommon
 	public abstract class AxisCommon : ChartComponent {
 		static readonly LogTools.Flag _trace = LogTools.Add("AxisCommon", LogTools.Level.Error);
+		/// <summary>
+		/// Set by the axis instance.
+		/// </summary>
 		public AxisType Type { get; protected set; }
+		/// <summary>
+		/// Set in response to setting <see cref="Side"/>.
+		/// </summary>
 		public AxisOrientation Orientation { get; protected set; }
 		Side _side;
 		/// <summary>
 		/// Side of the chart; also sets <see cref="Orientation"/>.
 		/// </summary>
 		public Side Side { get => _side; set { _side = value; AdjustOrientation(_side); } }
-		public double Minimum { get; set; } = double.NaN;
-		public double Maximum { get; set; } = double.NaN;
+		/// <summary>
+		/// Reflects extent of <see cref="LimitMinimum"/> or data values.
+		/// </summary>
+		public double Minimum { get; protected set; } = double.NaN;
+		/// <summary>
+		/// Reflects extent of <see cref="LimitMaximum"/> or data values.
+		/// </summary>
+		public double Maximum { get; protected set; } = double.NaN;
 		/// <summary>
 		/// Set this to override auto-scaling behavior on Minimum.
 		/// Default value is NaN.
@@ -55,10 +107,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Default value is 2.
 		/// </summary>
 		public double AxisMargin { get; set; } = 2;
+		/// <summary>
+		/// Reset extents to <see cref="LimitMinimum"/> and <see cref="LimitMaximum"/>.
+		/// </summary>
 		public void ResetLimits() {
 			Minimum = LimitMinimum;
 			Maximum = LimitMaximum;
 		}
+		/// <summary>
+		/// Update auto-scaled extent(s).
+		/// </summary>
+		/// <param name="value">Candidate value.</param>
 		public void UpdateLimits(double value) {
 			if (double.IsNaN(LimitMinimum) && (double.IsNaN(Minimum) || value < Minimum)) {
 				Minimum = value;
@@ -103,6 +162,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					break;
 			}
 		}
+		/// <summary>
+		/// Compute matrices for the given projection rectangle and direction (ltr/rtl).
+		/// </summary>
+		/// <param name="area">Projection area in DC.</param>
+		/// <param name="reverse">true: reverse direction.</param>
+		/// <returns>new instance.</returns>
+		/// <exception cref="InvalidOperationException">Cannot determine projection.</exception>
 		protected (Matrix3x2 model, Matrix3x2 proj) ProjectionFor(Rect area, bool reverse) {
 			switch (Side) {
 				case Side.Bottom:

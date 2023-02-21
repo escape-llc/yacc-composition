@@ -43,26 +43,38 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Instruct all components to broadcast extents.
+	/// Instruct all components to calculate and register extents.
 	/// </summary>
 	public sealed class Phase_ComponentExtents : PhaseWithLayoutState {
 		/// <summary>
-		/// Use to send <see cref="Component_Extents"/> events.
+		/// Accumulate registered extents.
 		/// </summary>
-		readonly IProvideConsume Bus;
-		public Phase_ComponentExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
-		public void Register(Component_Extents cc) { Bus.Consume(cc); }
+		readonly List<Component_Extents> Extents;
+		public Phase_ComponentExtents(LayoutState ls, List<Component_Extents> extents) : base(ls) { Extents = extents; }
+		/// <summary>
+		/// Component: register one extent for each axis in use.
+		/// </summary>
+		/// <param name="cc">Component extents on specific axis.</param>
+		public void Register(Component_Extents cc) { Extents.Add(cc); }
 	}
 	/// <summary>
-	/// Instruct all axes to broadcast extents.
+	/// Instruct all axes to calculate and register extents.
 	/// </summary>
 	public sealed class Phase_AxisExtents : PhaseWithLayoutState {
 		/// <summary>
-		/// Use to send <see cref="Axis_Extents"/> events.
+		/// Current component extents.
 		/// </summary>
-		readonly IProvideConsume Bus;
-		public Phase_AxisExtents(LayoutState ls, IProvideConsume eb) : base(ls) { Bus = eb; }
-		public void Register(Axis_Extents axis) { Bus.Consume(axis); }
+		public readonly IReadOnlyList<Component_Extents> Extents;
+		/// <summary>
+		/// Accumulate registered extents.
+		/// </summary>
+		readonly List<Axis_Extents> AxisExtents;
+		public Phase_AxisExtents(LayoutState ls, IReadOnlyList<Component_Extents> extents, List<Axis_Extents> aextents) : base(ls) { Extents = extents; AxisExtents = aextents; }
+		/// <summary>
+		/// Axis: register extents.
+		/// </summary>
+		/// <param name="axis">Axis extents.</param>
+		public void Register(Axis_Extents axis) { AxisExtents.Add(axis); }
 	}
 	/// <summary>
 	/// Core for phases with render context.
@@ -82,7 +94,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Instruct DSRP components to render.
+	/// Change initiated by <see cref="DataSource"/>.  <see cref="DataSource_Operation"/> receivers to execute the operation.
 	/// </summary>
 	public sealed class Phase_DataSourceOperation : PhaseWithRenderContext {
 		public readonly string Name;
@@ -97,7 +109,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Change initiated by a non-DSRP component.
+	/// Change initiated by a component that DID NOT result from a <see cref="DataSource_Operation"/>.
 	/// </summary>
 	public sealed class Phase_ComponentOperation : PhaseWithRenderContext {
 		public readonly string Name;
@@ -112,10 +124,24 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		}
 	}
 	/// <summary>
-	/// Notify non-DSRP components (axes, decorations) to render after extents are established.
+	/// Notify all extents are captured.
+	/// Some components MAY defer rendering to this event.
 	/// </summary>
 	public sealed class Phase_ModelComplete : PhaseWithRenderContext {
-		public Phase_ModelComplete(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
+		/// <summary>
+		/// Current component extents.
+		/// </summary>
+		public readonly IReadOnlyList<Component_Extents> Extents;
+		/// <summary>
+		/// Current axis extents.
+		/// </summary>
+		public readonly IReadOnlyList<Axis_Extents> AxisExtents;
+		public Phase_ModelComplete(
+			LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext,
+			IReadOnlyList<Component_Extents> extents, List<Axis_Extents> aextents) : base(ls, surface, components, dataContext) {
+				Extents = extents;
+				AxisExtents = aextents;
+			}
 	}
 	/// <summary>
 	/// Instruct components to adjust transforms to new viewport.
@@ -124,33 +150,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public Phase_RenderTransforms(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
 	}
 	#endregion
-	#region Component events
-	/// <summary>
-	/// Send on EB in response to <see cref="Phase_ComponentExtents"/>.
-	/// </summary>
-	public sealed class Component_Extents {
-		/// <summary>
-		/// MUST match receiver's series name.
-		/// </summary>
-		public readonly string SeriesName;
-		/// <summary>
-		/// MUST match receiver's data source.
-		/// </summary>
-		public readonly string DataSourceName;
-		/// <summary>
-		/// SHOULD receive one event for each axis.
-		/// </summary>
-		public readonly string AxisName;
-		public readonly double Minimum;
-		public readonly double Maximum;
-		public Component_Extents(string seriesName, string dataSourceName, string axisName, double minimum, double maximum) {
-			SeriesName = seriesName;
-			DataSourceName = dataSourceName;
-			AxisName = axisName;
-			Minimum = minimum;
-			Maximum = maximum;
-		}
-	}
+	#region Component_RefreshRequest
 	/// <summary>
 	/// Specific component is requesting refresh via command port.
 	/// </summary>
@@ -160,45 +160,6 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		public Component_RefreshRequest(Component_Operation op) {
 			Operation = op;
 			Name = op.Component.Name;
-		}
-	}
-	#endregion
-	#region Axis events
-	/// <summary>
-	/// Send on EB in response to <see cref="Phase_AxisExtents"/>.
-	/// </summary>
-	public class Axis_Extents {
-		public readonly string AxisName;
-		/// <summary>
-		/// MAY be <see cref="double.NaN"/>.
-		/// </summary>
-		public readonly double Minimum;
-		/// <summary>
-		/// MAY be <see cref="double.NaN"/>.
-		/// </summary>
-		public readonly double Maximum;
-		public readonly Side AxisSide;
-		public readonly AxisType Type;
-		public readonly bool Reversed;
-		public readonly double Range;
-		public Axis_Extents(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed) {
-			AxisName = axisName;
-			Minimum = minimum;
-			Maximum = maximum;
-			AxisSide = axisSide;
-			Type = axisType;
-			Reversed = reversed;
-			Range = double.IsNaN(minimum) || double.IsNaN(maximum) ? double.NaN : maximum - minimum;
-		}
-		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
-	}
-	/// <summary>
-	/// Axis with tick values, e.g. a value axis.
-	/// </summary>
-	public sealed class Axis_Extents_TickValues : Axis_Extents {
-		public readonly ImmutableArray<TickState> TickValues;
-		public Axis_Extents_TickValues(string axisName, double minimum, double maximum, Side axisSide, AxisType axisType, bool reversed, ImmutableArray<TickState> tvs) :base(axisName, minimum, maximum, axisSide, axisType, reversed) {
-			TickValues = tvs;
 		}
 	}
 	#endregion

@@ -6,6 +6,34 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region Component_Extents
+	/// <summary>
+	/// Send on EB in response to <see cref="Phase_ComponentExtents"/>.
+	/// </summary>
+	public sealed class Component_Extents {
+		/// <summary>
+		/// MUST match receiver's series name.
+		/// </summary>
+		public readonly string SeriesName;
+		/// <summary>
+		/// MUST match receiver's data source.
+		/// </summary>
+		public readonly string DataSourceName;
+		/// <summary>
+		/// SHOULD receive one event for each axis.
+		/// </summary>
+		public readonly string AxisName;
+		public readonly double Minimum;
+		public readonly double Maximum;
+		public Component_Extents(string seriesName, string dataSourceName, string axisName, double minimum, double maximum) {
+			SeriesName = seriesName;
+			DataSourceName = dataSourceName;
+			AxisName = axisName;
+			Minimum = minimum;
+			Maximum = maximum;
+		}
+	}
+	#endregion
 	#region Component_Operation
 	/// <summary>
 	/// Send on the command port when an update occurs.
