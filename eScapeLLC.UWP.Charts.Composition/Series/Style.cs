@@ -3,9 +3,18 @@ using Windows.Foundation;
 using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region Style_Brush
+	/// <summary>
+	/// Base of brushes.
+	/// </summary>
 	public abstract class Style_Brush {
 		public abstract CompositionBrush CreateBrush(Compositor c);
 	}
+	#endregion
+	#region Style_Stroke
+	/// <summary>
+	/// Stroke attributes.
+	/// </summary>
 	public class Style_Stroke {
 		public double StrokeThickness { get; set; } = double.NaN;
 		public double StrokeMiterLimit { get; set; } = double.NaN;
@@ -32,18 +41,41 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			sprite.StrokeEndCap = StrokeEndCap;
 		}
 	}
+	#endregion
+	#region Brush_Color
+	/// <summary>
+	/// Solid color brush.
+	/// </summary>
 	public class Brush_Color : Style_Brush {
 		public Windows.UI.Color Color { get; set; }
 		public override CompositionBrush CreateBrush(Compositor c) => c.CreateColorBrush(Color);
 	}
+	#endregion
+	#region Brush_GradientColorStop
+	/// <summary>
+	/// Gradient stop for gradient brushes.
+	/// </summary>
 	public class Brush_GradientColorStop {
 		public double Offset { get; set; }
 		public Windows.UI.Color Color { get; set; }
 	}
+	/// <summary>
+	/// Need for XAML.
+	/// </summary>
 	public class ColorStopCollection : List<Brush_GradientColorStop> { }
+	#endregion
+	#region Brush_Gradient
+	/// <summary>
+	/// Base of gradient brushes.
+	/// </summary>
 	public abstract class Brush_Gradient : Style_Brush {
 		public ColorStopCollection ColorStops { get; private set; } = new ColorStopCollection();
 	}
+	#endregion
+	#region Brush_LinearGradient
+	/// <summary>
+	/// Linear gradient brush.
+	/// </summary>
 	public class Brush_LinearGradient : Brush_Gradient {
 		public Point StartPoint { get; set; } = new Point(-1, -1);
 		public Point EndPoint { get; set; } = new Point(-1, -1);
@@ -68,6 +100,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return brush;
 		}
 	}
+	#endregion
+	#region Brush_RadialGradient
+	/// <summary>
+	/// Radial gradiant brush.
+	/// </summary>
 	public class Brush_RadialGradient : Brush_Gradient {
 		public override CompositionBrush CreateBrush(Compositor c) {
 			var brush = c.CreateRadialGradientBrush();
@@ -80,4 +117,5 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return brush;
 		}
 	}
+	#endregion
 }
