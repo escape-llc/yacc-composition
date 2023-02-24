@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
 using Yacc.Demo.VM;
 
 namespace Yacc.Composition.Demo.Pages {
@@ -51,8 +50,9 @@ namespace Yacc.Composition.Demo.Pages {
 		private void Add_item_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e) {
 			var obs = Rando();
 			(DataContext as ObservationsVM).AddTail(obs);
-			var items = new List<Observation>();
-			items.Add(obs);
+			var items = new List<Observation> {
+				obs
+			};
 			CommandPort1 = DataSource.Add(items);
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.Add(items);
@@ -68,8 +68,7 @@ namespace Yacc.Composition.Demo.Pages {
 		private void Add_and_remove_head_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e) {
 			var obs = Rando();
 			(DataContext as ObservationsVM).AddAndRemoveHead(obs);
-			var items = new List<Observation>();
-			items.Add(obs);
+			var items = new List<Observation> { obs };
 			_trace.Verbose($"slide it");
 			CommandPort1 = DataSource.SlidingWindow(items);
 			Changed(nameof(CommandPort1));

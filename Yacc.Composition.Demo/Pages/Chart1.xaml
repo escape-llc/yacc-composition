@@ -186,9 +186,7 @@
 				<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
 				-->
 				<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
-				<!--
 				<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
-				-->
 			</yacc:Chart.Components>
 		</yacc:Chart>
 	</RelativePanel>
