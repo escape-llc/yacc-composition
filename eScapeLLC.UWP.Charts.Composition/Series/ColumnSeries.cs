@@ -88,21 +88,22 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region helpers
 		void UpdateOffset(ColumnSeries_ItemState item) {
-			if (item.Element != null) {
+			if (item.Element == null) return;
+			if (AnimationFactory != null) {
+				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y}");
+				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
+				AnimationFactory.StartAnimation("Offset", ctx, item.Element);
+			}
+			else {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y} to:{offset.X},{offset.Y}");
-				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
-					AnimationFactory.StartAnimation("Offset", ctx, item.Element);
-				}
-				else {
-					item.Element.Offset = offset;
-				}
+				item.Element.Offset = offset;
 			}
 		}
 		#endregion
 		#region IListController<>
 		void IListController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+			_trace.Verbose($"{Name}.Live index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
 			if (elementSelected && state.Element == null) {
@@ -120,6 +121,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		void IListController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+			_trace.Verbose($"{Name}.Entering index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
 			bool elementSelected2 = IsSelected(state);
 			if (elementSelected2) {
@@ -130,6 +132,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		void IListController<ColumnSeries_ItemState>.ExitingItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+			_trace.Verbose($"{Name}.Exiting index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			if (state.Element != null) {
 				Exiting(state, it);
 			}
@@ -171,16 +174,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return element;
 		}
 		/// <summary>
-		/// Item is entering the list.
+		/// Item is entering the chart.
 		/// </summary>
 		/// <param name="item"></param>
 		protected virtual void Entering(ColumnSeries_ItemState item, ItemTransition it) {
-			if (item != null && item.Element != null) {
-				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-					AnimationFactory.StartAnimation("Enter", ctx, item.Element, ca => {
-						Container.Shapes.Add(item.Element);
-					});
+			if (item == null || item.Element == null) return;
+			if (AnimationFactory != null) {
+				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
+				AnimationFactory.StartAnimation("Enter", ctx, Container.Shapes, item.Element);
+			}
+			else {
+				if (it == ItemTransition.Head) {
+					Container.Shapes.Insert(0, item.Element);
 				}
 				else {
 					Container.Shapes.Add(item.Element);
@@ -188,22 +193,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		/// <summary>
-		/// Item is exiting the list.
+		/// Item is exiting the chart.
 		/// </summary>
 		/// <param name="item"></param>
 		protected virtual void Exiting(ColumnSeries_ItemState item, ItemTransition it) {
-			if (item != null && item.Element != null) {
-				if (AnimationFactory != null) {
-					var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-					AnimationFactory.StartAnimation("Exit", ctx, item.Element, ca => {
-						Container.Shapes.Remove(item.Element);
-						item.ResetElement();
-					});
-				}
-				else {
-					Container.Shapes.Remove(item.Element);
+			if (item == null || item.Element == null) return;
+			if (AnimationFactory != null) {
+				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
+				AnimationFactory.StartAnimation("Exit", ctx, Container.Shapes, item.Element, co => {
 					item.ResetElement();
-				}
+				});
+			}
+			else {
+				Container.Shapes.Remove(item.Element);
+				item.ResetElement();
 			}
 		}
 		protected virtual void UpdateStyle(ColumnSeries_ItemState item) {
@@ -217,7 +220,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="items">Sequence of item states.</param>
 		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, ItemTransition it, ColumnSeries_ItemState state)> items) {
 			var itemstate = new List<ItemStateCore>();
-			ProcessItems<ColumnSeries_ItemState>(items, this, itemstate);
+			ProcessItems(items, this, itemstate);
 			ItemState = itemstate;
 		}
 		#endregion
