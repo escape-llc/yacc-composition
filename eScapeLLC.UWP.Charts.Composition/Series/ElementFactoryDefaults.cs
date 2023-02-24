@@ -1,4 +1,5 @@
-﻿using System;
+﻿using eScape.Core;
+using System;
 using System.ComponentModel;
 using System.Numerics;
 using Windows.UI.Composition;
@@ -11,18 +12,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Provide default animations for the chart elements.
 	/// </summary>
 	public class AnimationFactory_Default : IAnimationFactory {
+		static readonly LogTools.Flag _trace = LogTools.Add("AnimationFactory_Default", LogTools.Level.Error);
 		/// <summary>
 		/// Duration of "shift" animation in MS.
 		/// </summary>
-		public int DurationShift { get; set; } = 2000;
+		public int DurationShift { get; set; } = 500;
 		/// <summary>
 		/// Duration of "enter" animation in MS.
 		/// </summary>
-		public int DurationEnter { get; set; } = 1500;
+		public int DurationEnter { get; set; } = 500;
 		/// <summary>
 		/// Duration of "exit" animation in MS.
 		/// </summary>
-		public int DurationExit { get; set; } = 1500;
+		public int DurationExit { get; set; } = 500;
 		Vector2KeyFrameAnimation shift;
 		ExpressionAnimation xform;
 		ImplicitAnimationCollection iac;
@@ -73,41 +75,60 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc) {
 			return iac;
 		}
-		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null) {
-			switch (key) {
+		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null) {
+			switch(key) {
 				case "Enter":
 					if (co is CompositionShape cs && iefc is IElementCategoryValueContext ieec && iefc is IElementDataOperation iedo) {
 						// calculate the spawn point
-						double c1 = iedo.Transition == ItemTransition.Head ? ieec.CategoryAxis.Minimum - 2: ieec.CategoryAxis.Maximum + 2;
+						double c1 = iedo.Transition == ItemTransition.Head
+							? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
+							: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
 						var (xx, yy) = MappingSupport.MapComponents(
 							c1, ieec.CategoryAxis.Orientation,
 							Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
+						_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({xx},{yy})");
 						// enter VT at this offset
 						cs.Offset = new Vector2((float)xx, (float)yy);
-						// callback MUST add to VT
-						cfg?.Invoke(enter);
-						//co.StartAnimation(enter.Target, enter);
+						if (iedo.Transition == ItemTransition.Head) {
+							ssc.Insert(0, cs);
+						}
+						else {
+							ssc.Add(cs);
+						}
+						cb?.Invoke(cs);
+						if (enter.Target != nameof(CompositionShape.Offset)) {
+							// if it's Offset we expect a call for that next, otherwise start this one
+							co.StartAnimation(enter.Target, enter);
+						}
 					}
 					break;
 				case "Exit":
 					if (co is CompositionShape cs2 && iefc is IElementCategoryValueContext ieec2 && iefc is IElementDataOperation iedo2) {
 						CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
 						ccb.Completed += (sender, cbcea) => {
-							// callback SHOULD remove from VT
-							cfg?.Invoke(exit);
+							ssc.Remove(cs2);
+							cb?.Invoke(cs2);
 						};
 						// calculate the exit point
-						double c1 = iedo2.Transition == ItemTransition.Head ? ieec2.CategoryAxis.Minimum - 2 : ieec2.CategoryAxis.Maximum + 2;
+						double c1 = iedo2.Transition == ItemTransition.Head
+							? ieec2.CategoryAxis.Minimum - 2 + ieec2.Item.CategoryOffset
+							: ieec2.CategoryAxis.Maximum + 2 + ieec2.Item.CategoryOffset;
 						var (xx, yy) = MappingSupport.MapComponents(
 							c1, ieec2.CategoryAxis.Orientation,
 							Math.Min(ieec2.Item.DataValue, 0), ieec2.ValueAxis.Orientation);
+						_trace.Verbose($"Exit {cs2.Comment} {iedo2.Transition} spawn:({xx},{yy})");
 						var vxx = new Vector2((float)xx, (float)yy);
 						exit.SetVector2Parameter("Index", vxx);
 						cs2.StartAnimation(exit.Target, exit);
 						ccb.End();
 					}
 					break;
+			}
+		}
+		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null) {
+			switch (key) {
 				case "Transform":
+					_trace.Verbose($"Transform {co.Comment}");
 					cfg?.Invoke(xform);
 					co.StartAnimation(xform.Target, xform);
 					break;
@@ -116,6 +137,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 						var (xx, yy) = MappingSupport.MapComponents(
 							ieec3.Item.CategoryValue + ieec3.Item.CategoryOffset, ieec3.CategoryAxis.Orientation,
 							Math.Min(ieec3.Item.DataValue, 0), ieec3.ValueAxis.Orientation);
+						_trace.Verbose($"Offset {cs3.Comment} [{ieec3.Item.CategoryValue}] move:({xx},{yy})");
 						var vxx = new Vector2((float)xx, (float)yy);
 						if (vxx != cs3.Offset) {
 							shift.SetVector2Parameter("Index", vxx);

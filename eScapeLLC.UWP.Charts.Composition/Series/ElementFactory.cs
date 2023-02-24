@@ -184,11 +184,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Start the indicated animation (sequence).
 		/// </summary>
-		/// <param name="key">Enter,Exit,Transform,Offset.</param>
+		/// <param name="key">Transform,Offset.</param>
 		/// <param name="iefc">Element context.</param>
 		/// <param name="co">Object to animate.</param>
 		/// <param name="cfg">Callback to act on the <paramref name="co"/>.  Enter: add to VT.  Exit: remove from VT. Transform: configure animation.</param>
 		void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
+		/// <summary>
+		/// Overload for Enter and Exit animation.
+		/// </summary>
+		/// <param name="key">Enter,Exit.</param>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="ssc">Container collection to manage VT.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters/leaves the VT.</param>
+		void StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
 	}
 }
