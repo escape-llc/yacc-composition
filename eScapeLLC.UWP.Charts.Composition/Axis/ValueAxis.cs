@@ -218,10 +218,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					Extents(xx);
 				}
 			}
-			var tc = new TickCalculator(Minimum, Maximum);
-			var tix = tc.GetTicks().OrderBy(xx => xx.Index).ToImmutableArray();
-			var msg = new Axis_Extents_TickValues(Name, Minimum, Maximum, Side, Type, Reverse, tix);
-			message.Register(msg);
+			if(double.IsNaN(Minimum) || double.IsNaN(Maximum)) {
+				var msg = new Axis_Extents(Name, Minimum, Maximum, Side, Type, Reverse);
+				message.Register(msg);
+			}
+			else {
+				var tc = new TickCalculator(Minimum, Maximum);
+				var tix = tc.GetTicks().OrderBy(xx => xx.Index).ToImmutableArray();
+				var msg = new Axis_Extents_TickValues(Name, Minimum, Maximum, Side, Type, Reverse, tix);
+				message.Register(msg);
+			}
 		}
 		void IConsumer<Phase_Layout>.Consume(Phase_Layout message) {
 			var space = AxisMargin + MinWidth;
