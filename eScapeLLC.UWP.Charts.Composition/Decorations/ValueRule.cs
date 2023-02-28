@@ -3,8 +3,10 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using eScapeLLC.UWP.Charts.Composition.Factory;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
@@ -12,9 +14,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// Tracks a value against a Value Axis via a line segment spanning the alternate axis e.g. Category Axis.
 	/// </summary>
-	public class ValueRule : ChartComponent, IRequireEnterLeave,
+	public class ValueRule : ChartComponent, IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
 		IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueRule", LogTools.Level.Error);
+		#region inner
+		class Value_LayoutSession : LayoutSession {
+			readonly AxisOrientation c1axis;
+			readonly AxisOrientation c2axis;
+			internal Value_LayoutSession(Matrix3x2 model, Matrix3x2 projection, AxisOrientation c1axis, AxisOrientation c2axis) : base(model, projection) {
+				this.c1axis = c1axis;
+				this.c2axis = c2axis;
+			}
+			public override (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset) {
+				if (isi is ItemStateC1 sis) {
+					var invert = sis.Component1 < 0 ? -1 : 1;
+					var center = MappingSupport.ToVector(offset.X, c1axis, sis.Component1 + offset.Y * invert, c2axis);
+					var (dx, dy) = MappingSupport.MapComponents(1, c1axis, sis.Component1 < 0 ? 1 : -1, c2axis);
+					return (Project(center), new Point(dx, dy));
+				}
+				return null;
+			}
+		}
+		#endregion
 		#region properties
 		/// <summary>
 		/// Component name of value axis.
@@ -33,6 +54,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// How to create animations for series and its elements.
 		/// </summary>
 		public IAnimationFactory AnimationFactory { get; set; }
+		/// <summary>
+		/// Provide a wrapper so labels can generate.
+		/// </summary>
+		IEnumerable<ISeriesItem> IProvideSeriesItemValues.SeriesItemValues {
+			get {
+				var sivc = new ItemStateC1(0, Value);
+				return new[] { sivc };
+			}
+		}
 		/// <summary>
 		/// Dereferenced value axis.
 		/// </summary>
@@ -204,6 +234,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Container = null;
 			icelc.DeleteLayer(Layer);
 			Layer = null;
+		}
+		#endregion
+		#region IProvideSeriesItemLayout
+		public ILayoutSession Create(Rect area) {
+			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal ? ValueAxis.Reversed : false;
+			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical ? ValueAxis.Reversed : false;
+			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
+			var proj = MatrixSupport.ProjectForQuadrant(q, area);
+			return new Value_LayoutSession(Model, proj, MappingSupport.OppositeOf(ValueAxis.Orientation), ValueAxis.Orientation);
 		}
 		#endregion
 	}
