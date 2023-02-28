@@ -69,6 +69,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region AxisCommon
 	public abstract class AxisCommon : ChartComponent {
 		static readonly LogTools.Flag _trace = LogTools.Add("AxisCommon", LogTools.Level.Error);
+		#region properties
 		/// <summary>
 		/// Set by the axis instance.
 		/// </summary>
@@ -109,6 +110,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Default value is 2.
 		/// </summary>
 		public double AxisMargin { get; set; } = 2;
+		#endregion
 		/// <summary>
 		/// Reset extents to <see cref="LimitMinimum"/> and <see cref="LimitMaximum"/>.
 		/// </summary>
