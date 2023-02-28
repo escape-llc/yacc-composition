@@ -8,15 +8,16 @@ using Windows.UI.Xaml.Data;
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region Component_Extents
 	/// <summary>
-	/// Send on EB in response to <see cref="Phase_ComponentExtents"/>.
+	/// Register during <see cref="Phase_ComponentExtents"/>.
 	/// </summary>
 	public sealed class Component_Extents {
 		/// <summary>
-		/// MUST match receiver's series name.
+		/// MUST match receiver's name.
 		/// </summary>
-		public readonly string SeriesName;
+		public readonly string ComponentName;
 		/// <summary>
 		/// MUST match receiver's data source.
+		/// MAY be NULL for components not tracking a <see cref="DataSource"/>.
 		/// </summary>
 		public readonly string DataSourceName;
 		/// <summary>
@@ -25,8 +26,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public readonly string AxisName;
 		public readonly double Minimum;
 		public readonly double Maximum;
-		public Component_Extents(string seriesName, string dataSourceName, string axisName, double minimum, double maximum) {
-			SeriesName = seriesName;
+		public Component_Extents(string componentName, string dataSourceName, string axisName, double minimum, double maximum) {
+			ComponentName = componentName;
 			DataSourceName = dataSourceName;
 			AxisName = axisName;
 			Minimum = minimum;

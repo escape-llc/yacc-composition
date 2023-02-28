@@ -364,7 +364,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			//_trace.Verbose($"remaining {ls.Layout.RemainingRect}");
 			ls.Layout.FinalizeRects();
 			Bus.Consume(new Phase_LayoutComplete(ls));
-			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
+			Bus.Consume(new Phase_Transforms(ls, Surface, Components, DataContext));
 		}
 		/// <summary>
 		/// Perform a full layout and rendering pass.
@@ -410,7 +410,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Bus.Consume(new Phase_ModelComplete(ls, Surface, Components, DataContext, extents, aextents));
 			// Phase VI: configure all transforms
 			_trace.Verbose($"phase-transforms");
-			Bus.Consume(new Phase_RenderTransforms(ls, Surface, Components, DataContext));
+			Bus.Consume(new Phase_Transforms(ls, Surface, Components, DataContext));
 			_trace.Verbose($"full ends");
 		}
 		/// <summary>

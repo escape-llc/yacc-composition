@@ -116,9 +116,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region helpers
 		/// <summary>
-		/// Mark as dirty and fire refresh request event.
-		/// Use this with sources that <b>don't</b> implement <see cref="INotifyCollectionChanged"/>.
-		/// ALSO use this if you are not using <see cref="ExternalRefresh"/> property.
+		/// Fire refresh request event.
 		/// </summary>
 		/// <param name="dso">Type of change.</param>
 		void Command(DataSource_Operation dso) {
