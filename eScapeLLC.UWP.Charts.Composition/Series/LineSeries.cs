@@ -116,8 +116,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
 					return null;
 				}
-				var (xx, yy) = MappingSupport.MapComponents(index + LineOffset, CategoryAxis.Orientation, value_val.Value, ValueAxis.Orientation);
-				var pt = new Vector2((float)xx, (float)yy);
+				var pt = MappingSupport.ToVector(index + LineOffset, CategoryAxis.Orientation, value_val.Value, ValueAxis.Orientation);
 				if (beginf) {
 					if(index > 0) {
 						cpb.EndFigure(CanvasFigureLoop.Open);
@@ -128,7 +127,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					cpb.AddLine(pt);
 				}
 				var istate = new LineSeries_ItemState(index, LineOffset, value_val.Value);
-				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{xx:F2},{yy:F2}");
+				_trace.Verbose($"{Name}[{index}] val:{value_val} dim:{pt.X:F2},{pt.Y:F2}");
 				return istate;
 			}
 			return null;
