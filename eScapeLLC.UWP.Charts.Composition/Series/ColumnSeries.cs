@@ -1,6 +1,7 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
+using eScapeLLC.UWP.Charts.Composition.Factory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,9 +47,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if(isi is ColumnSeries_ItemState sis) {
 					var invert = sis.DataValue < 0 ? -1 : 1;
 					double hw = width / 2.0, hh = Math.Abs(sis.DataValue / 2.0);
-					var (xx, yy) = MappingSupport.MapComponents(sis.Component1 + hw + offset.X * hw, c1axis, (sis.DataValue / 2.0) + offset.Y * hh * invert, c2axis);
+					var center = MappingSupport.ToVector(sis.Component1 + hw + offset.X * hw, c1axis, (sis.DataValue / 2.0) + offset.Y * hh * invert, c2axis);
 					var (dx, dy) = MappingSupport.MapComponents(1, c1axis, sis.DataValue > 0 ? 1 : -1, c2axis);
-					var center = new Vector2((float)xx, (float)yy);
 					return (Project(center), new Point(dx, dy));
 				}
 				return null;
@@ -92,7 +92,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (AnimationFactory != null) {
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y}");
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
-				AnimationFactory.StartAnimation("Offset", ctx, item.Element);
+				AnimationFactory.StartAnimation(AnimationKeys.OFFSET, ctx, item.Element);
 			}
 			else {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
@@ -181,7 +181,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (item == null || item.Element == null) return;
 			if (AnimationFactory != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.StartAnimation("Enter", ctx, Container.Shapes, item.Element);
+				AnimationFactory.StartAnimation(AnimationKeys.ENTER, ctx, Container.Shapes, item.Element);
 			}
 			else {
 				if (it == ItemTransition.Head) {
@@ -200,7 +200,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (item == null || item.Element == null) return;
 			if (AnimationFactory != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.StartAnimation("Exit", ctx, Container.Shapes, item.Element, co => {
+				AnimationFactory.StartAnimation(AnimationKeys.EXIT, ctx, Container.Shapes, item.Element, co => {
 					item.ResetElement();
 				});
 			}
@@ -236,7 +236,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				// apply new model transform
 				if (item != null && item.Element != null) {
 					if (AnimationFactory != null) {
-						AnimationFactory.StartAnimation("Transform", ctx, item.Element, cc => {
+						AnimationFactory.StartAnimation(AnimationKeys.TRANSFORM, ctx, item.Element, cc => {
 							// doesn't animate but updates matrix
 							cc.Properties.InsertVector3("Component1", new Vector3(Model.M11, Model.M21, Model.M31));
 							cc.Properties.InsertVector3("Component2", new Vector3(Model.M12, Model.M22, Model.M32));
