@@ -1,9 +1,11 @@
 ﻿using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.ComponentModel;
+using System.Numerics;
 using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region interfaces
 	/// <summary>
 	/// Entry interface for element factory.
 	/// A specific context implements this plus other interfaces as necessary to support sprite creation.
@@ -17,6 +19,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public interface IElementExtentContext {
 		Axis_Extents Component1Axis { get; }
 		Axis_Extents Component2Axis { get; }
+	}
+	public interface IElementValueContext {
+		double Value { get; }
 	}
 	/// <summary>
 	/// Additional information for creating rectangle geometry.
@@ -42,6 +47,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Y axis extent.
 		/// </summary>
 		double Height { get; }
+	}
+	/// <summary>
+	/// Additional information for creating Line Segment Geometry.
+	/// </summary>
+	public interface IElementLineContext {
+		Vector2 Start { get; }
+		Vector2 End { get; }
 	}
 	/// <summary>
 	/// Additional information about the <see cref="ISeriesItemCategoryValue"/> for this sprite.
@@ -82,6 +94,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		ItemTransition Transition { get; }
 	}
+	#endregion
+	#region CategoryValueContext
 	/// <summary>
 	/// Default context for basic use case in category/value scenario.
 	/// </summary>
@@ -108,6 +122,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Transition = transition;
 		}
 	}
+	#endregion
+	#region DefaultContext
 	public class DefaultContext : IElementFactoryContext, IElementExtentContext {
 		public Compositor Compositor { get; private set; }
 
@@ -121,6 +137,26 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Component2Axis = a2;
 		}
 	}
+	#endregion
+	#region ValueContext
+	public class ValueContext : IElementFactoryContext, IElementExtentContext, IElementValueContext, IElementDataOperation {
+		public Compositor Compositor { get; private set; }
+		public Axis_Extents Component1Axis { get; private set; }
+		public Axis_Extents Component2Axis { get; private set; }
+		public double Value { get; private set; }
+
+		public ItemTransition Transition { get; private set; }
+
+		public ValueContext(Compositor compositor, double value, Axis_Extents component1Axis, Axis_Extents component2Axis, ItemTransition transition) {
+			Compositor = compositor;
+			Component1Axis = component1Axis;
+			Component2Axis = component2Axis;
+			Value = value;
+			Transition = transition;
+		}
+	}
+	#endregion
+	#region ColumnElementContext
 	/// <summary>
 	/// Context for creating bars.
 	/// </summary>
@@ -144,6 +180,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public double Height { get; private set; }
 	}
+	#endregion
+	#region LineGeometryContext
+	public class LineGeometryContext : IElementFactoryContext, IElementLineContext {
+		public Compositor Compositor { get; private set; }
+		public Vector2 Start {get; private set;}
+		public Vector2 End { get; private set;}
+		public LineGeometryContext(Compositor compositor, Vector2 start, Vector2 end) {
+			Compositor = compositor;
+			Start = start;
+			End = end;
+		}
+	}
+	#endregion
+	#region PathGeometryContext
 	/// <summary>
 	/// Context for creating paths.
 	/// </summary>
@@ -156,6 +206,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public CompositionPath Path { get; private set; }
 	}
+	#endregion
+	#region IElementFactory
 	/// <summary>
 	/// Ability to create composition elements for given series types.
 	/// </summary>
@@ -167,6 +219,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>New instance.</returns>
 		CompositionShape CreateElement(IElementFactoryContext iefc);
 	}
+	#endregion
+	#region IAnimationFactory
 	/// <summary>
 	/// Ability to animate series elements.
 	/// </summary>
@@ -188,7 +242,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="iefc">Element context.</param>
 		/// <param name="co">Object to animate.</param>
 		/// <param name="cfg">Callback to act on the <paramref name="co"/>.  Enter: add to VT.  Exit: remove from VT. Transform: configure animation.</param>
-		void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
 		/// <summary>
 		/// Overload for Enter and Exit animation.
 		/// </summary>
@@ -197,7 +252,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="ssc">Container collection to manage VT.</param>
 		/// <param name="co">Object to animate.</param>
 		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters/leaves the VT.</param>
-		void StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null);
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
 	}
+	#endregion
 }
