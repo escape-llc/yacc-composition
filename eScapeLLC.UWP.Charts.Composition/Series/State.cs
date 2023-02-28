@@ -268,8 +268,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <exception cref="ArgumentException"></exception>
 		public Vector2 OffsetForColumn(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Math.Min(Component2, 0), vori);
-			return new Vector2((float)xx, (float)yy);
+			var pt = MappingSupport.ToVector(Component1, cori, Math.Min(Component2, 0), vori);
+			return pt;
 		}
 		/// <summary>
 		/// Calculate offset for Marker series sprite.
@@ -282,8 +282,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <exception cref="ArgumentException"></exception>
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
-			return new Vector2((float)xx, (float)yy);
+			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
+			return pt;
 		}
 		#endregion
 	}
@@ -304,8 +304,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public override double[] Components() => new double[] { Component1, Component2 };
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
-			return new Vector2((float)xx, (float)yy);
+			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
+			return pt;
 		}
 	}
 	/// <summary>
@@ -342,8 +342,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public override double[] Components() => new double[] { Component1, Component2, Component3 };
 		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
 			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var (xx, yy) = MappingSupport.MapComponents(Component1, cori, Component2, vori);
-			return new Vector2((float)xx, (float)yy);
+			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
+			return pt;
 		}
 	}
 	#endregion
