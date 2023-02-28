@@ -381,7 +381,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="isi">Source item.</param>
 		/// <param name="offset">Placement offset (in M coordinates).</param>
-		/// <returns>NULL: cannot calculate; !NULL: placement info.  center in PX; direction for label placement.</returns>
+		/// <returns>NULL: cannot calculate; !NULL: placement info.  center in PX; direction in PX for label placement.</returns>
 		public abstract (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset);
 	}
 	#endregion
