@@ -10,7 +10,6 @@
 		"DataSource": "Error",
 		"HeatmapSeries": "Error",
 		"HorizontalBand": "Error",
-		"HorizontalRule": "Error",
 		"ImageSourceMarkerSeries": "Error",
 		"LineSeries": "Error",
 		"MarkerSeries": "Error",
@@ -18,6 +17,7 @@
 		"StackedColumnSeries": "Error",
 		"ValueAxis": "Error",
 		"ValueAxisGrid": "Error",
-		"ValueLabels": "Error"
+		"ValueLabels": "Error",
+		"ValueRule": "Verbose"
 	}
 }
