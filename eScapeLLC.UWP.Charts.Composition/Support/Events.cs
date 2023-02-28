@@ -146,21 +146,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <summary>
 	/// Instruct components to adjust transforms to new viewport.
 	/// </summary>
-	public sealed class Phase_RenderTransforms : PhaseWithRenderContext {
-		public Phase_RenderTransforms(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
-	}
-	#endregion
-	#region Component_RefreshRequest
-	/// <summary>
-	/// Specific component is requesting refresh via command port.
-	/// </summary>
-	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
-		public readonly string Name;
-		public readonly Component_Operation Operation;
-		public Component_RefreshRequest(Component_Operation op) {
-			Operation = op;
-			Name = op.Component.Name;
-		}
+	public sealed class Phase_Transforms : PhaseWithRenderContext {
+		public Phase_Transforms(LayoutState ls, Canvas surface, ObservableCollection<ChartComponent> components, object dataContext) : base(ls, surface, components, dataContext) { }
 	}
 	#endregion
 	#region CommandPort
@@ -178,7 +165,20 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	public abstract class CommandPort_Operation { }
 	public abstract class CommandPort_RefreshRequest { }
 	#endregion
-	#region DataSource events
+	#region Component_RefreshRequest
+	/// <summary>
+	/// Specific component is requesting refresh via command port.
+	/// </summary>
+	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
+		public readonly string Name;
+		public readonly Component_Operation Operation;
+		public Component_RefreshRequest(Component_Operation op) {
+			Operation = op;
+			Name = op.Component.Name;
+		}
+	}
+	#endregion
+	#region DataSource_RefreshRequest
 	/// <summary>
 	/// Data source is requesting an operation via command port.
 	/// </summary>

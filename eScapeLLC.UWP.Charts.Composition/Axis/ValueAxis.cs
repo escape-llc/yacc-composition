@@ -85,7 +85,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region ValueAxis
 	public class ValueAxis : AxisCommon, IChartAxis, IRequireEnterLeave,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
-		IConsumer<Phase_ModelComplete>, IConsumer<Phase_RenderTransforms> {
+		IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueAxis", LogTools.Level.Error);
 		#region inner
 		abstract class Axis_State : ItemStateCore {
@@ -351,7 +351,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Verbose($"{Name} sizeChanged[{state.Tick.Index}] loc:{loc} yv:{state.Tick.Value} o:({state.xorigin},{state.yorigin}) ns:{e.NewSize} ds:{fe.DesiredSize}");
 			}
 		}
-		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
 			if (AxisLabels.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var icrc = message.ContextFor(this);

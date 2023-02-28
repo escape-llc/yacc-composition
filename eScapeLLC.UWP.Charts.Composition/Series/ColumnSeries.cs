@@ -27,7 +27,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public class ColumnSeries : CategoryValueSeries<ColumnSeries_ItemState>,
 		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IListController<ColumnSeries_ItemState>,
-		IConsumer<Phase_RenderTransforms> {
+		IConsumer<Phase_Transforms> {
 		static LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
 		/// <summary>
@@ -277,7 +277,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Render area participates in the Projection transform.
 		/// </summary>
 		/// <param name="message"></param>
-		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
 			if (CategoryAxis == null || ValueAxis == null) return;
 			if (ItemState.Count == 0) return;
 			if (Container == null) return;

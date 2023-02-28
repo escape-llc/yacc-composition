@@ -26,7 +26,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	#endregion
 	public class ValueLabels : ChartComponent, IRequireEnterLeave,
-		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueLabels", LogTools.Level.Error);
 		#region inner
 		class Item_State : ItemStateCore {
@@ -434,7 +434,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				Layer.Add(recycler.Created);
 			}
 		}
-		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
 			if (ItemState.Count == 0) return;
 			var icrc = message.ContextFor(this);
 			_trace.Verbose($"{Name} transforms a:{icrc.Area} source:{Source?.Name} type:{icrc.Type}");

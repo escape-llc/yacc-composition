@@ -13,7 +13,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon,
 		IRequireEnterLeave, IChartAxis, IListController<CategoryAxis.Axis_ItemState>,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
-		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_RenderTransforms> {
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
 		class Axis_ItemState : ItemStateCore {
@@ -265,7 +265,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if(Side == Side.Top) return 1;
 			return 0;
 		}
-		void IConsumer<Phase_RenderTransforms>.Consume(Phase_RenderTransforms message) {
+		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
 			if (AxisLabels.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var rctx = message.ContextFor(this);

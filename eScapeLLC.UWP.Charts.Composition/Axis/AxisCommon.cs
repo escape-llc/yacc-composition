@@ -6,9 +6,9 @@ using Windows.Foundation;
 using System.Collections.Immutable;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	#region Axis events
+	#region Axis_Extents
 	/// <summary>
-	/// Send on EB in response to <see cref="Phase_AxisExtents"/>.
+	/// Register during <see cref="Phase_AxisExtents"/>.
 	/// </summary>
 	public class Axis_Extents {
 		public readonly string AxisName;
@@ -35,6 +35,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		public AxisOrientation Orientation => AxisSide == Side.Left || AxisSide == Side.Right ? AxisOrientation.Vertical : AxisOrientation.Horizontal;
 	}
+	#endregion
+	#region Axis_Extents_TickValues
 	/// <summary>
 	/// Axis with tick values, e.g. a value axis.
 	/// </summary>
@@ -145,7 +147,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					did = true;
 				}
 			}
-			_trace.Verbose($"{Name} extents did:{did} min:{xmin} max:{xmax} s:{message.SeriesName} smin:{message.Minimum}  smax:{message.Maximum}");
+			_trace.Verbose($"{Name} extents did:{did} min:{xmin} max:{xmax} s:{message.ComponentName} smin:{message.Minimum}  smax:{message.Maximum}");
 			if (did) {
 				//Dirty = true;
 			}
