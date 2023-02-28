@@ -16,6 +16,8 @@ namespace Yacc.Composition.Demo.Pages {
 		static readonly LogTools.Flag _trace = LogTools.Add("Chart1", LogTools.Level.Error);
 		public DataSource_Operation CommandPort1 { get; set; }
 		public DataSource_Operation CommandPort2 { get; set; }
+		public double Value1Average { get; set; }
+		public double Value2Average { get; set; }
 		public Chart1() {
 			this.InitializeComponent();
 			InitializeDataset();
@@ -41,11 +43,18 @@ namespace Yacc.Composition.Demo.Pages {
 			CommandPort2 = DataSource.Reset(items2);
 			var vm = new ObservationsVM(Dispatcher, items);
 			DataContext = vm;
+			Recalculate();
 		}
 		private void Chart_ChartError(eScapeLLC.UWP.Charts.Composition.Chart sender, eScapeLLC.UWP.Charts.Composition.ChartErrorEventArgs args) {
 			var errors = args.Results.Select(x => x.ErrorMessage).ToArray();
 			var emsg = string.Join("\t", errors);
 			_trace.Error($"**ChartError {emsg}");
+		}
+		void Recalculate() {
+			Value1Average = (DataContext as ObservationsVM).Value1Average;
+			Changed(nameof(Value1Average));
+			Value2Average = (DataContext as ObservationsVM).Value2Average;
+			Changed(nameof(Value2Average));
 		}
 		private void Add_item_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e) {
 			var obs = Rando();
@@ -57,6 +66,7 @@ namespace Yacc.Composition.Demo.Pages {
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.Add(items);
 			Changed(nameof(CommandPort2));
+			Recalculate();
 		}
 		private void Remove_head_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e) {
 			(DataContext as ObservationsVM).RemoveHead();
@@ -64,6 +74,7 @@ namespace Yacc.Composition.Demo.Pages {
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.Remove(1, true);
 			Changed(nameof(CommandPort2));
+			Recalculate();
 		}
 		private void Add_and_remove_head_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e) {
 			var obs = Rando();
@@ -74,6 +85,7 @@ namespace Yacc.Composition.Demo.Pages {
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.SlidingWindow(items);
 			Changed(nameof(CommandPort2));
+			Recalculate();
 		}
 		private void Remove_tail_Click(object sender, RoutedEventArgs e) {
 			(DataContext as ObservationsVM).RemoveTail();
@@ -81,6 +93,7 @@ namespace Yacc.Composition.Demo.Pages {
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.Remove(1);
 			Changed(nameof(CommandPort2));
+			Recalculate();
 		}
 		private void Add_head_Click(object sender, RoutedEventArgs e) {
 			var obs = Rando();
@@ -91,6 +104,7 @@ namespace Yacc.Composition.Demo.Pages {
 			Changed(nameof(CommandPort1));
 			CommandPort2 = DataSource.Add(items, true);
 			Changed(nameof(CommandPort2));
+			Recalculate();
 		}
 	}
 }

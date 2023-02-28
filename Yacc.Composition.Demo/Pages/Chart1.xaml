@@ -5,8 +5,10 @@
 	xmlns:page="using:eScape.Core.Page"
 	xmlns:local="using:Yacc.Composition.Demo"
 	xmlns:yacc="using:eScapeLLC.UWP.Charts.Composition"
+	xmlns:yf="using:eScapeLLC.UWP.Charts.Composition.Factory"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:vm="using:Yacc.Demo.VM"
+	d:DataContext="{d:DesignInstance Type=vm:ObservationsVM}"
 	mc:Ignorable="d"
 	Background="Orange">
 	<Page.Resources>
@@ -41,50 +43,50 @@
 		<DataTemplate x:Key="TextBlock">
 			<TextBlock Text="{Binding Text}"/>
 		</DataTemplate>
-		<yacc:AnimationFactory_Default x:Key="Animate"/>
-		<yacc:ColumnElementFactory_Default x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
-			<yacc:ColumnElementFactory_Default.Stroke>
+		<yf:AnimationFactory x:Key="Animate"/>
+		<yf:RoundedRectangleGeometryFactory x:Key="ColumnStyle" CornerRadiusX="0.05" CornerRadiusY="0.05">
+			<yf:RoundedRectangleGeometryFactory.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
+			</yf:RoundedRectangleGeometryFactory.Stroke>
+			<yf:RoundedRectangleGeometryFactory.FillBrush>
 				<yacc:Brush_Color Color="Red"/>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
+			</yf:RoundedRectangleGeometryFactory.FillBrush>
+			<yf:RoundedRectangleGeometryFactory.StrokeBrush>
 				<yacc:Brush_Color Color="Green"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column2Style" CornerRadiusX="0.05" CornerRadiusY="0.05">
-			<yacc:ColumnElementFactory_Default.Stroke>
+			</yf:RoundedRectangleGeometryFactory.StrokeBrush>
+		</yf:RoundedRectangleGeometryFactory>
+		<yf:RoundedRectangleGeometryFactory x:Key="Column2Style" CornerRadiusX="0.05" CornerRadiusY="0.05">
+			<yf:RoundedRectangleGeometryFactory.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1.5" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
+			</yf:RoundedRectangleGeometryFactory.Stroke>
+			<yf:RoundedRectangleGeometryFactory.FillBrush>
 				<yacc:Brush_RadialGradient>
 					<yacc:Brush_RadialGradient.ColorStops>
 						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
 						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
 					</yacc:Brush_RadialGradient.ColorStops>
 				</yacc:Brush_RadialGradient>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
+			</yf:RoundedRectangleGeometryFactory.FillBrush>
+			<yf:RoundedRectangleGeometryFactory.StrokeBrush>
 				<yacc:Brush_Color Color="CornflowerBlue"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column3Style" CornerRadiusX="0" CornerRadiusY="0">
-			<yacc:ColumnElementFactory_Default.Stroke>
+			</yf:RoundedRectangleGeometryFactory.StrokeBrush>
+		</yf:RoundedRectangleGeometryFactory>
+		<yf:RoundedRectangleGeometryFactory x:Key="Column3Style" CornerRadiusX="0" CornerRadiusY="0">
+			<yf:RoundedRectangleGeometryFactory.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="2" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
+			</yf:RoundedRectangleGeometryFactory.Stroke>
+			<yf:RoundedRectangleGeometryFactory.FillBrush>
 				<yacc:Brush_Color Color="LimeGreen"/>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
+			</yf:RoundedRectangleGeometryFactory.FillBrush>
+			<yf:RoundedRectangleGeometryFactory.StrokeBrush>
 				<yacc:Brush_Color Color="Blue"/>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:ColumnElementFactory_Default x:Key="Column4Style" CornerRadiusX="0.025" CornerRadiusY="0.025" FlipGradients="True">
-			<yacc:ColumnElementFactory_Default.Stroke>
+			</yf:RoundedRectangleGeometryFactory.StrokeBrush>
+		</yf:RoundedRectangleGeometryFactory>
+		<yf:RoundedRectangleGeometryFactory x:Key="Column4Style" CornerRadiusX="0.025" CornerRadiusY="0.025" FlipGradients="True">
+			<yf:RoundedRectangleGeometryFactory.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="1" />
-			</yacc:ColumnElementFactory_Default.Stroke>
-			<yacc:ColumnElementFactory_Default.FillBrush>
+			</yf:RoundedRectangleGeometryFactory.Stroke>
+			<yf:RoundedRectangleGeometryFactory.FillBrush>
 				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
 					<yacc:Brush_LinearGradient.ColorStops>
 						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
@@ -92,37 +94,37 @@
 						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
 					</yacc:Brush_LinearGradient.ColorStops>
 				</yacc:Brush_LinearGradient>
-			</yacc:ColumnElementFactory_Default.FillBrush>
-			<yacc:ColumnElementFactory_Default.StrokeBrush>
+			</yf:RoundedRectangleGeometryFactory.FillBrush>
+			<yf:RoundedRectangleGeometryFactory.StrokeBrush>
 				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
 					<yacc:Brush_LinearGradient.ColorStops>
 						<yacc:Brush_GradientColorStop Offset="0" Color="Orange"/>
 						<yacc:Brush_GradientColorStop Offset="1" Color="Blue"/>
 					</yacc:Brush_LinearGradient.ColorStops>
 				</yacc:Brush_LinearGradient>
-			</yacc:ColumnElementFactory_Default.StrokeBrush>
-		</yacc:ColumnElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line1Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
+			</yf:RoundedRectangleGeometryFactory.StrokeBrush>
+		</yf:RoundedRectangleGeometryFactory>
+		<yf:PathGeometryFactory x:Key="Line1Style">
+			<yf:PathGeometryFactory.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round" StrokeEndCap="Round" />
+			</yf:PathGeometryFactory.Stroke>
+			<yf:PathGeometryFactory.StrokeBrush>
 				<yacc:Brush_Color Color="GreenYellow"/>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line2Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
+			</yf:PathGeometryFactory.StrokeBrush>
+		</yf:PathGeometryFactory>
+		<yf:PathGeometryFactory x:Key="Line2Style">
+			<yf:PathGeometryFactory.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round" StrokeEndCap="Round" />
+			</yf:PathGeometryFactory.Stroke>
+			<yf:PathGeometryFactory.StrokeBrush>
 				<yacc:Brush_Color Color="DarkGoldenrod"/>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
-		<yacc:LineElementFactory_Default x:Key="Line3Style">
-			<yacc:LineElementFactory_Default.Stroke>
-				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round"  StrokeEndCap="Round" />
-			</yacc:LineElementFactory_Default.Stroke>
-			<yacc:LineElementFactory_Default.StrokeBrush>
+			</yf:PathGeometryFactory.StrokeBrush>
+		</yf:PathGeometryFactory>
+		<yf:PathGeometryFactory x:Key="Line3Style">
+			<yf:PathGeometryFactory.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round" StrokeEndCap="Round" />
+			</yf:PathGeometryFactory.Stroke>
+			<yf:PathGeometryFactory.StrokeBrush>
 				<yacc:Brush_LinearGradient StartPoint="0,.5" EndPoint="1,.5">
 					<yacc:Brush_LinearGradient.ColorStops>
 						<yacc:Brush_GradientColorStop Offset="0" Color="Blue"/>
@@ -130,8 +132,16 @@
 						<yacc:Brush_GradientColorStop Offset="1" Color="Orange"/>
 					</yacc:Brush_LinearGradient.ColorStops>
 				</yacc:Brush_LinearGradient>
-			</yacc:LineElementFactory_Default.StrokeBrush>
-		</yacc:LineElementFactory_Default>
+			</yf:PathGeometryFactory.StrokeBrush>
+		</yf:PathGeometryFactory>
+		<yf:LineGeometryFactory x:Key="ValueRuleStyle">
+			<yf:LineGeometryFactory.Stroke>
+				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="3" StrokeLineJoin="Round" StrokeStartCap="Flat" StrokeEndCap="Flat" />
+			</yf:LineGeometryFactory.Stroke>
+			<yf:LineGeometryFactory.StrokeBrush>
+				<yacc:Brush_Color Color="Goldenrod"/>
+			</yf:LineGeometryFactory.StrokeBrush>
+		</yf:LineGeometryFactory>
 	</Page.Resources>
 	<RelativePanel Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
 		<CommandBar x:Name="toolbar"
@@ -181,6 +191,7 @@
 				<yacc:ValueLabels SourceName="BarSeries2" LabelFormatString="F2" x:Name="v_colv2" LabelTemplate="{StaticResource TextBlock}"
 					PlacementOffset="0,1" LabelOffset="0,-1" LabelStyle="{StaticResource BigLabels}" />
 				-->
+				<yacc:ValueRule Name="Avg1" ValueAxisName="YAxis" Value="{x:Bind Value1Average,Mode=OneWay}" ElementFactory="{StaticResource ValueRuleStyle}" AnimationFactory="{StaticResource Animate}" />
 				<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 				<!--
 				<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
