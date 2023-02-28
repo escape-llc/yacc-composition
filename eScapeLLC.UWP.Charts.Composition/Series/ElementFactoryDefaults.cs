@@ -2,17 +2,25 @@
 using System;
 using System.ComponentModel;
 using System.Numerics;
+using Windows.ApplicationModel.UserDataTasks;
+using Windows.Media.Devices;
 using Windows.UI.Composition;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Hosting;
 
-namespace eScapeLLC.UWP.Charts.Composition {
-	#region AnimationFactory_Default
+namespace eScapeLLC.UWP.Charts.Composition.Factory {
+	#region AnimationFactory
+	public static class AnimationKeys {
+		public const string ENTER = "Enter";
+		public const string EXIT = "Exit";
+		public const string TRANSFORM = "Transform";
+		public const string OFFSET = "Offset";
+	}
 	/// <summary>
 	/// Provide default animations for the chart elements.
 	/// </summary>
-	public class AnimationFactory_Default : IAnimationFactory {
-		static readonly LogTools.Flag _trace = LogTools.Add("AnimationFactory_Default", LogTools.Level.Error);
+	public class AnimationFactory : IAnimationFactory {
+		static readonly LogTools.Flag _trace = LogTools.Add("AnimationFactory", LogTools.Level.Error);
 		/// <summary>
 		/// Duration of "shift" animation in MS.
 		/// </summary>
@@ -75,85 +83,117 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc) {
 			return iac;
 		}
-		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null) {
+		void Enter_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
+			// calculate the spawn point
+			double c1 = iedo.Transition == ItemTransition.Head
+				? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
+				: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
+			var vxx = MappingSupport.ToVector(
+				c1, ieec.CategoryAxis.Orientation,
+				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
+			_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({vxx.X},{vxx.Y})");
+			// enter VT at this offset
+			cs.Offset = vxx;
+			if (iedo.Transition == ItemTransition.Head) {
+				ssc.Insert(0, cs);
+			}
+			else {
+				ssc.Add(cs);
+			}
+			cb?.Invoke(cs);
+			if (enter.Target != nameof(CompositionShape.Offset)) {
+				// if it's Offset we expect a call for that next, otherwise start this one
+				cs.StartAnimation(enter.Target, enter);
+			}
+		}
+		void Exit_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementFactoryContext iefc, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
+			CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+			ccb.Comment = $"ScopedBatch_{cs.Comment}";
+			ccb.Completed += (sender, cbcea) => {
+				ssc.Remove(cs);
+				cb?.Invoke(cs);
+			};
+			// calculate the exit point
+			double c1 = iedo.Transition == ItemTransition.Head
+				? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
+				: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
+			var vxx = MappingSupport.ToVector(
+				c1, ieec.CategoryAxis.Orientation,
+				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
+			_trace.Verbose($"Exit {cs.Comment} {iedo.Transition} spawn:({vxx.X},{vxx.Y})");
+			exit.SetVector2Parameter("Index", vxx);
+			cs.StartAnimation(exit.Target, exit);
+			ccb.End();
+		}
+		public bool StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null) {
 			switch(key) {
-				case "Enter":
+				case AnimationKeys.ENTER:
 					if (co is CompositionShape cs && iefc is IElementCategoryValueContext ieec && iefc is IElementDataOperation iedo) {
-						// calculate the spawn point
-						double c1 = iedo.Transition == ItemTransition.Head
-							? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
-							: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
-						var (xx, yy) = MappingSupport.MapComponents(
-							c1, ieec.CategoryAxis.Orientation,
-							Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
-						_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({xx},{yy})");
-						// enter VT at this offset
-						cs.Offset = new Vector2((float)xx, (float)yy);
-						if (iedo.Transition == ItemTransition.Head) {
-							ssc.Insert(0, cs);
-						}
-						else {
-							ssc.Add(cs);
-						}
-						cb?.Invoke(cs);
-						if (enter.Target != nameof(CompositionShape.Offset)) {
-							// if it's Offset we expect a call for that next, otherwise start this one
-							co.StartAnimation(enter.Target, enter);
-						}
+						Enter_CategoryValue(ssc, cs, ieec, iedo, cb);
+						return true;
 					}
 					break;
-				case "Exit":
+				case AnimationKeys.EXIT:
 					if (co is CompositionShape cs2 && iefc is IElementCategoryValueContext ieec2 && iefc is IElementDataOperation iedo2) {
-						CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
-						ccb.Completed += (sender, cbcea) => {
-							ssc.Remove(cs2);
-							cb?.Invoke(cs2);
-						};
-						// calculate the exit point
-						double c1 = iedo2.Transition == ItemTransition.Head
-							? ieec2.CategoryAxis.Minimum - 2 + ieec2.Item.CategoryOffset
-							: ieec2.CategoryAxis.Maximum + 2 + ieec2.Item.CategoryOffset;
-						var (xx, yy) = MappingSupport.MapComponents(
-							c1, ieec2.CategoryAxis.Orientation,
-							Math.Min(ieec2.Item.DataValue, 0), ieec2.ValueAxis.Orientation);
-						_trace.Verbose($"Exit {cs2.Comment} {iedo2.Transition} spawn:({xx},{yy})");
-						var vxx = new Vector2((float)xx, (float)yy);
-						exit.SetVector2Parameter("Index", vxx);
-						cs2.StartAnimation(exit.Target, exit);
-						ccb.End();
+						Exit_CategoryValue(ssc, cs2, iefc, ieec2, iedo2, cb);
+						return true;
 					}
 					break;
 			}
+			return false;
 		}
-		public void StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null) {
+		void Offset_CategoryValue(CompositionShape cs, IElementCategoryValueContext ieec) {
+			var vxx = MappingSupport.ToVector(
+				ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
+				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
+			_trace.Verbose($"Offset {cs.Comment} [{ieec.Item.CategoryValue}] move:({vxx.X},{vxx.Y})");
+			if (vxx != cs.Offset) {
+				shift.SetVector2Parameter("Index", vxx);
+				cs.StartAnimation(shift.Target, shift);
+			}
+		}
+		void Offset_Value(CompositionShape cs, IElementExtentContext ieexc, IElementValueContext ievc) {
+			var vxx = MappingSupport.ToVector(
+				0, ieexc.Component1Axis.Orientation,
+				ievc.Value, ieexc.Component2Axis.Orientation);
+			_trace.Verbose($"Offset {cs.Comment} [0] move:({vxx.X},{vxx.Y})");
+			if (vxx != cs.Offset) {
+				shift.SetVector2Parameter("Index", vxx);
+				cs.StartAnimation(shift.Target, shift);
+			}
+		}
+		public bool StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null) {
 			switch (key) {
-				case "Transform":
+				case AnimationKeys.TRANSFORM:
 					_trace.Verbose($"Transform {co.Comment}");
 					cfg?.Invoke(xform);
 					co.StartAnimation(xform.Target, xform);
-					break;
-				case "Offset":
-					if (co is CompositionShape cs3 && iefc is IElementCategoryValueContext ieec3) {
-						var (xx, yy) = MappingSupport.MapComponents(
-							ieec3.Item.CategoryValue + ieec3.Item.CategoryOffset, ieec3.CategoryAxis.Orientation,
-							Math.Min(ieec3.Item.DataValue, 0), ieec3.ValueAxis.Orientation);
-						_trace.Verbose($"Offset {cs3.Comment} [{ieec3.Item.CategoryValue}] move:({xx},{yy})");
-						var vxx = new Vector2((float)xx, (float)yy);
-						if (vxx != cs3.Offset) {
-							shift.SetVector2Parameter("Index", vxx);
-							cs3.StartAnimation(shift.Target, shift);
+					return true;
+				case AnimationKeys.OFFSET:
+					if (co is CompositionShape cs) {
+						switch(iefc) {
+							case IElementCategoryValueContext ieec:
+								Offset_CategoryValue(cs, ieec);
+								return true;
+							case IElementValueContext ievc:
+								if(iefc is IElementExtentContext ieexc) {
+									Offset_Value(cs, ieexc, ievc);
+									return true;
+								}
+								break;
 						}
 					}
 					break;
 			}
+			return false;
 		}
 	}
 	#endregion
-	#region ColumnElementFactory_Default
+	#region RoundedRectangleGeometryFactory
 	/// <summary>
 	/// Default factory for creating rounded rectangle sprites.
 	/// </summary>
-	public class ColumnElementFactory_Default : IElementFactory {
+	public class RoundedRectangleGeometryFactory : IElementFactory {
 		#region properties
 		public Style_Brush FillBrush { get; set; }
 		public Style_Brush StrokeBrush { get; set; }
@@ -172,7 +212,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public bool FlipGradients { get; set; }
 		#endregion
-		public ColumnElementFactory_Default() { }
+		public RoundedRectangleGeometryFactory() { }
 		protected void FlipGradient(Brush_LinearGradient blg, CompositionLinearGradientBrush clgb) {
 			var flip = clgb.StartPoint;
 			clgb.StartPoint = clgb.EndPoint;
@@ -215,11 +255,38 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 	}
 	#endregion
-	#region LineElementFactory_Default
+	#region LineGeometryFactory
+	/// <summary>
+	/// Use for <see cref="ValueRule"/> etc.
+	/// Creates normalized geometry; owner MUST manage the <see cref="CompositionShape.Offset"/> to position correctly.
+	/// </summary>
+	public class LineGeometryFactory : IElementFactory {
+		public Style_Brush StrokeBrush { get; set; }
+		public Style_Stroke Stroke { get; set; }
+		public CompositionShape CreateElement(IElementFactoryContext iefc) {
+			var line = iefc.Compositor.CreateLineGeometry();
+			if(iefc is IElementLineContext ielc) {
+				line.Start = ielc.Start;
+				line.End = ielc.End;
+			}
+			else {
+				line.Start = new Vector2(0, 0);
+				line.End = new Vector2(1, 0);
+			}
+			var sprite = iefc.Compositor.CreateSpriteShape(line);
+			Stroke?.Apply(sprite);
+			if (StrokeBrush != null) {
+				sprite.StrokeBrush = StrokeBrush.CreateBrush(iefc.Compositor);
+			}
+			return sprite;
+		}
+	}
+	#endregion
+	#region PathGeometryFactory
 	/// <summary>
 	/// Default factor for <see cref="CompositionPath"/> sprites.
 	/// </summary>
-	public class LineElementFactory_Default : IElementFactory {
+	public class PathGeometryFactory : IElementFactory {
 		public Style_Brush StrokeBrush { get; set; }
 		public Style_Stroke Stroke { get; set; }
 		public CompositionShape CreateElement(IElementFactoryContext iefc) {
