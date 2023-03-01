@@ -116,8 +116,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected void EnsureAxis(IChartComponentContext iccc) {
 			IChartErrorInfo icei = iccc as IChartErrorInfo;
 			if (!string.IsNullOrEmpty(ValueAxisName)) {
-				var axis = iccc.Find(ValueAxisName) as IChartAxis;
-				if (axis == null) {
+				if (!(iccc.Find(ValueAxisName) is IChartAxis axis)) {
 					icei?.Report(new ChartValidationResult(NameOrType(), $"Value axis '{ValueAxisName}' was not found", new[] { nameof(ValueAxisName) }));
 				}
 				else {
@@ -221,16 +220,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Container = wcc.CreateContainerShape();
 			Container.Comment = $"container_{Name}";
 			Layer = icelc.CreateLayer(Container);
-			if (AnimationFactory != null) {
-				AnimationFactory.Prepare(wcc);
-			}
+			AnimationFactory?.Prepare(wcc);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName}");
 		}
 		void IRequireEnterLeave.Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
-			if (AnimationFactory != null) {
-				AnimationFactory.Unprepare(Window.Current.Compositor);
-			}
+			AnimationFactory?.Unprepare(Window.Current.Compositor);
 			Container = null;
 			icelc.DeleteLayer(Layer);
 			Layer = null;

@@ -5,21 +5,140 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Markup;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region Item State Crazy
+	public abstract class ItemStateOperation<S> where S: ItemStateCore {
+		public ItemTransition Transition { get; private set; }
+		protected ItemStateOperation(ItemTransition it) {
+			Transition = it;
+		}
+		public abstract void Execute(IListController<S> ilc, List<ItemStateCore> itemstate);
+	}
+	public abstract class ItemsEnteringOrLive<S> : ItemStateOperation<S> where S : ItemStateCore {
+		public IReadOnlyList<S> Items { get; private set; }
+		/// <summary>
+		/// Live and Entering share the same set of indices.
+		/// Use this to offset the indices accordingly.
+		/// </summary>
+		public int Offset { get; private set; }
+		protected ItemsEnteringOrLive(ItemTransition it, IReadOnlyList<S> items, int offset = 0) :base(it) {
+			Items = items;
+			Offset = offset;
+		}
+	}
+	public class ItemsEntering<S> : ItemsEnteringOrLive<S> where S : ItemStateCore {
+		public ItemsEntering(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
+		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.EnteringItem(Offset + ix, Transition, Items[ix]);
+				itemstate.Add(Items[ix]);
+			}
+		}
+	}
+	public class ItemsLive<S> : ItemsEnteringOrLive<S> where S : ItemStateCore {
+		public ItemsLive(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
+		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.LiveItem(Offset + ix, Transition, Items[ix]);
+				itemstate.Add(Items[ix]);
+			}
+		}
+	}
+	public class ItemsExiting<S> : ItemStateOperation<S> where S: ItemStateCore {
+		public IReadOnlyList<S> Items { get; private set; }
+		public ItemsExiting(ItemTransition it, IReadOnlyList<S> items) : base(it) {
+			Items = items;
+		}
+		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.ExitingItem(ix, Transition, Items[ix]);
+			}
+		}
+	}
+	#endregion
+	#region DataSourceSeries
 	/// <summary>
-	/// Base class for series based on category/value axes.
-	/// Handles all the core data source operations and delegates to virtual/abstract methods.
+	/// Commits to a <see cref="DataSource"/> and defines virtual dispatch handlers for the operations.
 	/// </summary>
-	/// <typeparam name="S">Item type. MUST NOT be an Inner Class!</typeparam>
-	public abstract class CategoryValueSeries<S> : ChartComponent,
-		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete> where S: ItemStateCore {
-		static LogTools.Flag _trace = LogTools.Add("CategoryValueSeries", LogTools.Level.Error);
+	public abstract class DataSourceSeries : ChartComponent, IConsumer<Phase_DataSourceOperation> {
+		static readonly LogTools.Flag _trace = LogTools.Add("DataSourceSeries", LogTools.Level.Error);
 		#region properties
 		/// <summary>
 		/// MUST match the name of a data source.
 		/// </summary>
 		public string DataSourceName { get; set; }
+		#endregion
+		#region abstract operation handlers
+		/// <summary>
+		/// Reset exits all existing elements and enters all the elements given.
+		/// </summary>
+		/// <param name="reset"></param>
+		protected abstract void Reset(DataSource_Reset reset);
+		/// <summary>
+		/// Sliding window exits and enters same number of elements on head/tail respectively.
+		/// </summary>
+		/// <param name="slidingWindow"></param>
+		protected abstract void SlidingWindow(DataSource_SlidingWindow slidingWindow);
+		/// <summary>
+		/// Add enters the given element(s) at the given end.
+		/// </summary>
+		/// <param name="add"></param>
+		protected abstract void Add(DataSource_Add add);
+		/// <summary>
+		/// Remove exits the given number of elements from indicated end.
+		/// </summary>
+		/// <param name="remove"></param>
+		protected abstract void Remove(DataSource_Remove remove);
+		/// <summary>
+		/// Return TRUE if successfully configured.
+		/// </summary>
+		/// <param name="message">Use for configuration.</param>
+		/// <returns>true: proceed; false: return.</returns>
+		protected abstract bool TryConfigure(DataSource_Operation message);
+		#endregion
+		#region handlers
+		/// <summary>
+		/// Dispatch to virtual handlers.
+		/// </summary>
+		/// <param name="message"></param>
+		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
+			if (message.Operation.Name != DataSourceName) return;
+			if(!TryConfigure(message.Operation)) return;
+			switch (message.Operation) {
+				case DataSource_Add add:
+					_trace.Verbose($"{Name} dso-add ds:{add.Name} front:{add.AtFront} ct:{add.NewItems.Count}");
+					Add(add);
+					break;
+				case DataSource_Reset reset:
+					_trace.Verbose($"{Name} dso-reset ds:{reset.Name} ct:{reset.Items.Count}");
+					Reset(reset);
+					break;
+				case DataSource_SlidingWindow sw:
+					_trace.Verbose($"{Name} dso-sw ds:{sw.Name} ct:{sw.NewItems.Count}");
+					SlidingWindow(sw);
+					break;
+				case DataSource_Remove remove:
+					_trace.Verbose($"{Name} dso-remove ds:{remove.Name} front:{remove.AtFront} ct:{remove.Count}");
+					Remove(remove);
+					break;
+			}
+		}
+		#endregion
+	}
+	#endregion
+	/// <summary>
+	/// Base class for <see cref="DataSourceSeries"/> based on 2 components (category, value).
+	/// </summary>
+	/// <typeparam name="S">Item type. MUST NOT be an Inner Class!</typeparam>
+	public abstract class CategoryValueSeries<S> : DataSourceSeries,
+		IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete> where S: ItemStateCore {
+		static readonly LogTools.Flag _trace = LogTools.Add("CategoryValueSeries", LogTools.Level.Error);
+		#region properties
 		/// <summary>
 		/// MUST match the name of an axis.  Mapped to Component_1.
 		/// </summary>
@@ -88,7 +207,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// MUST be NULL after processing.
 		/// This is because the "end" phases execute regardless of the <see cref="DataSource"/> that caused it.
 		/// </summary>
-		protected IEnumerable<(ItemStatus st, ItemTransition it, S state)> Pending { get; set; }
+		protected IEnumerable<ItemStateOperation<S>> Pending { get; set; }
 		#endregion
 		#region ctor
 		public CategoryValueSeries() {
@@ -127,8 +246,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected void EnsureAxes(IChartComponentContext iccc) {
 			IChartErrorInfo icei = iccc as IChartErrorInfo;
 			if (!string.IsNullOrEmpty(ValueAxisName)) {
-				var axis = iccc.Find(ValueAxisName) as IChartAxis;
-				if (axis == null) {
+				if (!(iccc.Find(ValueAxisName) is IChartAxis axis)) {
 					icei?.Report(new ChartValidationResult(NameOrType(), $"Value axis '{ValueAxisName}' was not found", new[] { nameof(ValueAxisName) }));
 				}
 				else {
@@ -141,8 +259,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ValueAxisName)}' was not set", new[] { nameof(ValueAxisName) }));
 			}
 			if (!string.IsNullOrEmpty(CategoryAxisName)) {
-				var axis = iccc.Find(CategoryAxisName) as IChartAxis;
-				if (axis == null) {
+				if (!(iccc.Find(CategoryAxisName) is IChartAxis axis)) {
 					icei?.Report(new ChartValidationResult(NameOrType(), $"Category axis '{CategoryAxisName}' was not found", new[] { nameof(CategoryAxisName) }));
 				}
 				else {
@@ -179,6 +296,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				yield return (ItemStatus.Enter, it, state);
 			}
 		}
+		protected virtual IEnumerable<S> Entering(System.Collections.IList items) {
+			for (int ix = 0; ix < items.Count; ix++) {
+				var state = CreateState(ix, items[ix]);
+				yield return state;
+			}
+		}
 		/// <summary>
 		/// Create the state needed for this series.
 		/// </summary>
@@ -190,46 +313,49 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Reset exits all existing elements and enters all the elements given.
 		/// </summary>
 		/// <param name="reset"></param>
-		protected virtual void Reset(DataSource_Reset reset) {
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(reset.Items, ItemTransition.Tail);
-			Pending = exit.Concat(enter).ToList();
+		protected override void Reset(DataSource_Reset reset) {
+			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Select(xx=> xx as S).ToList());
+			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, Entering(reset.Items).ToList());
+			Pending = new[] { eexit, eenter };
 		}
 		/// <summary>
 		/// Sliding window exits and enters same number of elements on head/tail respectively.
 		/// </summary>
 		/// <param name="slidingWindow"></param>
-		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(slidingWindow.NewItems, ItemTransition.Tail);
-			Pending = exit.Concat(live).Concat(enter).ToList();
+		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
+			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Take(slidingWindow.NewItems.Count).Select(xx => xx as S).ToList());
+			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => xx as S).ToList());
+			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, Entering(slidingWindow.NewItems).ToList(), elive.Items.Count);
+			Pending = new[] { eexit, elive, eenter };
 		}
 		/// <summary>
 		/// Add enters the given element(s) at the given end.
 		/// </summary>
 		/// <param name="add"></param>
-		protected virtual void Add(DataSource_Add add) {
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> enter = Entering(add.NewItems, add.AtFront ? ItemTransition.Head : ItemTransition.Tail);
-			IEnumerable<(ItemStatus st, ItemTransition it, S state)> final = add.AtFront ? enter.Reverse().Concat(live) : live.Concat(enter);
-			Pending = final.ToList();
+		protected override void Add(DataSource_Add add) {
+			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Select(xx => xx as S).ToList(), add.AtFront ? add.NewItems.Count : 0);
+			var itmp = Entering(add.NewItems);
+			if(add.AtFront) {
+				itmp = itmp.Reverse();
+			}
+			ItemStateOperation<S> eenter = new ItemsEntering<S>(add.AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), add.AtFront ? 0 : elive.Items.Count);
+			Pending = add.AtFront ? new[] { eenter, elive } : new[] { elive, eenter };
 		}
 		/// <summary>
 		/// Remove exits the given number of elements from indicated end.
 		/// </summary>
 		/// <param name="remove"></param>
-		protected virtual void Remove(DataSource_Remove remove) {
+		protected override void Remove(DataSource_Remove remove) {
 			if (remove.AtFront) {
-				IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Take(remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as S));
-				IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Skip(remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
-				Pending = exit.Concat(live).ToList();
+				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Take(remove.Count).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Skip(remove.Count).Select(xx => xx as S).ToList());
+				Pending = new[] { eexit, elive };
 			}
 			else {
 				var ct = ItemState.Count - remove.Count;
-				IEnumerable<(ItemStatus st, ItemTransition it, S state)> live = ItemState.Take(ct).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as S));
-				IEnumerable<(ItemStatus st, ItemTransition it, S state)> exit = ItemState.Skip(ct).Select(xx => (ItemStatus.Exit, ItemTransition.Tail,  xx as S));
-				Pending = exit.Concat(live).ToList();
+				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Take(ct).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Tail, ItemState.Skip(ct).Select(xx => xx as S).ToList());
+				Pending = new[] { eexit, elive };
 			}
 		}
 		/// <summary>
@@ -273,14 +399,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			UpdateModelTransform();
 			ModelComplete();
 		}
-		/// <summary>
-		/// Dispatch to virtual handlers.
-		/// </summary>
-		/// <param name="message"></param>
-		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
-			if (ElementFactory == null) return;
-			if (message.Operation.Name != DataSourceName) return;
-			if(message.Operation is DataSource_Typed dstt) {
+		protected override bool TryConfigure(DataSource_Operation operation) {
+			if (ElementFactory == null) return false;
+			if (operation is DataSource_Typed dstt) {
 				ValueBinding = Binding.For(dstt.ItemType, ValueMemberName);
 				if (!string.IsNullOrEmpty(LabelMemberName)) {
 					LabelBinding = Binding.For(dstt.ItemType, LabelMemberName);
@@ -288,26 +409,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				else {
 					LabelBinding = ValueBinding;
 				}
-				if (ValueBinding == null) return;
+				if (ValueBinding == null) return false;
 			}
-			switch (message.Operation) {
-				case DataSource_Add add:
-					_trace.Verbose($"{Name} dso-add ds:{add.Name} front:{add.AtFront} ct:{add.NewItems.Count}");
-					Add(add);
-					break;
-				case DataSource_Reset reset:
-					_trace.Verbose($"{Name} dso-reset ds:{reset.Name} ct:{reset.Items.Count}");
-					Reset(reset);
-					break;
-				case DataSource_SlidingWindow sw:
-					_trace.Verbose($"{Name} dso-sw ds:{sw.Name} ct:{sw.NewItems.Count}");
-					SlidingWindow(sw);
-					break;
-				case DataSource_Remove remove:
-					_trace.Verbose($"{Name} dso-remove ds:{remove.Name} front:{remove.AtFront} ct:{remove.Count}");
-					Remove(remove);
-					break;
-			}
+			return true;
 		}
 		#endregion
 	}
