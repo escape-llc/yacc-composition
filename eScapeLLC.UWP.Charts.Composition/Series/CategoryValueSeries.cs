@@ -1,66 +1,10 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using Windows.UI.Xaml;
-using Windows.UI.Xaml.Markup;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace eScapeLLC.UWP.Charts.Composition {
-	#region Item State Crazy
-	public abstract class ItemStateOperation<S> where S: ItemStateCore {
-		public ItemTransition Transition { get; private set; }
-		protected ItemStateOperation(ItemTransition it) {
-			Transition = it;
-		}
-		public abstract void Execute(IListController<S> ilc, List<ItemStateCore> itemstate);
-	}
-	public abstract class ItemsEnteringOrLive<S> : ItemStateOperation<S> where S : ItemStateCore {
-		public IReadOnlyList<S> Items { get; private set; }
-		/// <summary>
-		/// Live and Entering share the same set of indices.
-		/// Use this to offset the indices accordingly.
-		/// </summary>
-		public int Offset { get; private set; }
-		protected ItemsEnteringOrLive(ItemTransition it, IReadOnlyList<S> items, int offset = 0) :base(it) {
-			Items = items;
-			Offset = offset;
-		}
-	}
-	public class ItemsEntering<S> : ItemsEnteringOrLive<S> where S : ItemStateCore {
-		public ItemsEntering(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
-		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
-			for (int ix = 0; ix < Items.Count; ix++) {
-				ilc.EnteringItem(Offset + ix, Transition, Items[ix]);
-				itemstate.Add(Items[ix]);
-			}
-		}
-	}
-	public class ItemsLive<S> : ItemsEnteringOrLive<S> where S : ItemStateCore {
-		public ItemsLive(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
-		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
-			for (int ix = 0; ix < Items.Count; ix++) {
-				ilc.LiveItem(Offset + ix, Transition, Items[ix]);
-				itemstate.Add(Items[ix]);
-			}
-		}
-	}
-	public class ItemsExiting<S> : ItemStateOperation<S> where S: ItemStateCore {
-		public IReadOnlyList<S> Items { get; private set; }
-		public ItemsExiting(ItemTransition it, IReadOnlyList<S> items) : base(it) {
-			Items = items;
-		}
-		public override void Execute(IListController<S> ilc, List<ItemStateCore> itemstate) {
-			for (int ix = 0; ix < Items.Count; ix++) {
-				ilc.ExitingItem(ix, Transition, Items[ix]);
-			}
-		}
-	}
-	#endregion
 	#region DataSourceSeries
 	/// <summary>
 	/// Commits to a <see cref="DataSource"/> and defines virtual dispatch handlers for the operations.
@@ -288,14 +232,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Fabricate state used for entering items.
 		/// </summary>
 		/// <param name="items">Item source.</param>
-		/// <param name="createstate">State factory method.</param>
 		/// <returns>New instance.</returns>
-		protected virtual IEnumerable<(ItemStatus st, ItemTransition it, S state)> Entering(System.Collections.IList items, ItemTransition it) {
-			for (int ix = 0; ix < items.Count; ix++) {
-				var state = CreateState(ix, items[ix]);
-				yield return (ItemStatus.Enter, it, state);
-			}
-		}
 		protected virtual IEnumerable<S> Entering(System.Collections.IList items) {
 			for (int ix = 0; ix < items.Count; ix++) {
 				var state = CreateState(ix, items[ix]);
@@ -314,49 +251,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="reset"></param>
 		protected override void Reset(DataSource_Reset reset) {
-			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Select(xx=> xx as S).ToList());
-			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, Entering(reset.Items).ToList());
-			Pending = new[] { eexit, eenter };
+			Pending = reset.CreateOperations(ItemState, Entering);
 		}
 		/// <summary>
 		/// Sliding window exits and enters same number of elements on head/tail respectively.
 		/// </summary>
 		/// <param name="slidingWindow"></param>
 		protected override void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Take(slidingWindow.NewItems.Count).Select(xx => xx as S).ToList());
-			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Skip(slidingWindow.NewItems.Count).Select(xx => xx as S).ToList());
-			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, Entering(slidingWindow.NewItems).ToList(), elive.Items.Count);
-			Pending = new[] { eexit, elive, eenter };
+			Pending = slidingWindow.CreateOperations(ItemState, Entering);
 		}
 		/// <summary>
 		/// Add enters the given element(s) at the given end.
 		/// </summary>
 		/// <param name="add"></param>
 		protected override void Add(DataSource_Add add) {
-			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Select(xx => xx as S).ToList(), add.AtFront ? add.NewItems.Count : 0);
-			var itmp = Entering(add.NewItems);
-			if(add.AtFront) {
-				itmp = itmp.Reverse();
-			}
-			ItemStateOperation<S> eenter = new ItemsEntering<S>(add.AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), add.AtFront ? 0 : elive.Items.Count);
-			Pending = add.AtFront ? new[] { eenter, elive } : new[] { elive, eenter };
+			Pending = add.CreateOperations(ItemState, Entering);
 		}
 		/// <summary>
 		/// Remove exits the given number of elements from indicated end.
 		/// </summary>
 		/// <param name="remove"></param>
 		protected override void Remove(DataSource_Remove remove) {
-			if (remove.AtFront) {
-				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, ItemState.Take(remove.Count).Select(xx => xx as S).ToList());
-				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Skip(remove.Count).Select(xx => xx as S).ToList());
-				Pending = new[] { eexit, elive };
-			}
-			else {
-				var ct = ItemState.Count - remove.Count;
-				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, ItemState.Take(ct).Select(xx => xx as S).ToList());
-				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Tail, ItemState.Skip(ct).Select(xx => xx as S).ToList());
-				Pending = new[] { eexit, elive };
-			}
+			Pending = remove.CreateOperations<S>(ItemState);
 		}
 		/// <summary>
 		/// Called during <see cref="Phase_ModelComplete"/>.
@@ -374,6 +290,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Calculate component extents into XXXMinimum/XXXMaximum.
 		/// </summary>
 		protected abstract void ComponentExtents();
+		/// <summary>
+		/// Core part of the update cycle.
+		/// </summary>
+		/// <param name="items">Sequence of item operations.</param>
+		protected virtual void UpdateCore(IOperationController<S> ioc, IEnumerable<ItemStateOperation<S>> items) {
+			var itemstate = new List<ItemStateCore>();
+			foreach (var item in items) {
+				item.Execute(ioc, itemstate);
+			}
+			ItemState = itemstate;
+		}
 		#endregion
 		#region handlers
 		/// <summary>
