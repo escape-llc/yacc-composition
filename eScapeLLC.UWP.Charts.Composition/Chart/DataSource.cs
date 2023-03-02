@@ -14,13 +14,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected DataSource_Operation() { }
 	}
 	#endregion
-	#region DataSource_Clear
-	/// <summary>
-	/// Empty all items.
-	/// </summary>
-	public sealed class DataSource_Clear : DataSource_Operation {
-	}
-	#endregion
 	#region DataSource_Typed
 	/// <summary>
 	/// Makes it easier to deal with generic versions without knowing the type.
@@ -35,13 +28,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public Type ItemType { get; protected set; }
 	}
 	#endregion
+	#region DataSource_WithItems
+	/// <summary>
+	/// Most operations involve a list of source items.
+	/// </summary>
+	public abstract class DataSource_WithItems : DataSource_Typed {
+		/// <summary>
+		/// Data source items.
+		/// </summary>
+		public readonly IList Items;
+		public DataSource_WithItems(IList items, Type type) : base(type) { this.Items = items; }
+	}
+	#endregion
+	#region DataSource_Clear
+	/// <summary>
+	/// Exit all elements at head.
+	/// </summary>
+	public sealed class DataSource_Clear : DataSource_Operation { }
+	#endregion
 	#region DataSource_Reset
 	/// <summary>
-	/// Exit all existing elements, Enter contents of the given list.
+	/// Exit all existing elements at head, Enter contents of the given list.  MAY cause a scale change.
 	/// </summary>
-	public sealed class DataSource_Reset : DataSource_Typed {
-		public readonly IList Items;
-		public DataSource_Reset(IList items, Type type) :base(type) { this.Items = items; }
+	public sealed class DataSource_Reset : DataSource_WithItems {
+		public DataSource_Reset(IList items, Type type) :base(items, type) { }
 		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
 			ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Select(xx => xx as S).ToList());
 			ItemStateOperation<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList());
@@ -51,54 +61,47 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region DataSource_SlidingWindow
 	/// <summary>
-	/// Exit elements from head, enter same number to tail.
+	/// Exit elements at head, enter same number at tail. No scale change.
+	/// Count of <see cref="DataSource_WithItems.Items"/> is number of elements to add/remove.
 	/// </summary>
-	public sealed class DataSource_SlidingWindow : DataSource_Typed {
-		/// <summary>
-		/// Count of items determines number of elements to remove.
-		/// </summary>
-		public readonly IList NewItems;
-		public DataSource_SlidingWindow(IList items, Type type) :base(type) { this.NewItems = items; }
+	public sealed class DataSource_SlidingWindow : DataSource_WithItems {
+		public DataSource_SlidingWindow(IList items, Type type) :base(items, type) { }
 		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
-			ItemsExiting<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Take(NewItems.Count).Select(xx => xx as S).ToList());
-			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Skip(NewItems.Count).Select(xx => xx as S).ToList());
-			ItemsEntering<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(NewItems).ToList(), live.Items.Count);
+			ItemsExiting<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Take(Items.Count).Select(xx => xx as S).ToList());
+			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Skip(Items.Count).Select(xx => xx as S).ToList());
+			ItemsEntering<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList(), live.Items.Count);
 			return new ItemStateOperation<S>[] { exit, live, enter };
 		}
 	}
 	#endregion
 	#region DataSource_Add
 	/// <summary>
-	/// Add new elements to front/rear.
+	/// Add new elements at head/tail.  Causes a scale change.
 	/// </summary>
-	public sealed class DataSource_Add : DataSource_Typed {
-		public readonly bool AtFront;
-		public readonly IList NewItems;
-		public DataSource_Add(IList items, Type type, bool af = false) :base(type) { this.NewItems = items; AtFront = af; }
+	public sealed class DataSource_Add : DataSource_WithItems {
+		public readonly bool AtHead;
+		public DataSource_Add(IList items, Type type, bool ah = false) :base(items, type) { AtHead = ah; }
 		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList, IEnumerable<S>> entering) where S : ItemStateCore {
-			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Select(xx => xx as S).ToList(), AtFront ? NewItems.Count : 0);
-			var itmp = entering(NewItems);
-			if (AtFront) {
-				itmp = itmp.Reverse();
-			}
-			ItemStateOperation<S> enter = new ItemsEntering<S>(AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtFront ? 0 : live.Items.Count);
-			return AtFront ? new[] { enter, live } : new[] { live, enter };
+			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Select(xx => xx as S).ToList(), AtHead ? Items.Count : 0);
+			var itmp = entering(Items);
+			ItemStateOperation<S> enter = new ItemsEntering<S>(AtHead ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtHead ? 0 : live.Items.Count);
+			return AtHead ? new[] { enter, live } : new[] { live, enter };
 		}
 	}
 	#endregion
 	#region DataSource_Remove
 	/// <summary>
-	/// Exit existing elements from front/rear.
+	/// Exit existing elements at head/tail.  Causes a scale change.
 	/// </summary>
 	public sealed class DataSource_Remove : DataSource_Operation {
-		public readonly bool AtFront;
+		public readonly bool AtHead;
 		public readonly uint Count;
-		public DataSource_Remove(uint count, bool atFront) {
-			AtFront = atFront;
+		public DataSource_Remove(uint count, bool ah) {
+			AtHead = ah;
 			Count = count;
 		}
 		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items) where S : ItemStateCore {
-			if (AtFront) {
+			if (AtHead) {
 				ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Take((int)Count).Select(xx => xx as S).ToList());
 				ItemStateOperation<S> live = new ItemsLive<S>(ItemTransition.None, items.Skip((int)Count).Select(xx => xx as S).ToList());
 				return new[] { exit, live };
@@ -113,6 +116,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	#endregion
 	#region DataSource
+	/// <summary>
+	/// Gateway for chart data commands, via the <see cref="CommandPort"/> property.
+	/// Attach a Binding or x:Bind <see cref="CommandPort"/> to your VM property, then set your VM property to trigger commands.
+	/// If you use x:Bind, you MUST use Mode=OneWay.
+	/// </summary>
 	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
 		static readonly LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
 		#region DPs

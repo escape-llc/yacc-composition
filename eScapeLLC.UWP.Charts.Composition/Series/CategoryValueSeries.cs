@@ -55,7 +55,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if(!TryConfigure(message.Operation)) return;
 			switch (message.Operation) {
 				case DataSource_Add add:
-					_trace.Verbose($"{Name} dso-add ds:{add.Name} front:{add.AtFront} ct:{add.NewItems.Count}");
+					_trace.Verbose($"{Name} dso-add ds:{add.Name} front:{add.AtHead} ct:{add.Items.Count}");
 					Add(add);
 					break;
 				case DataSource_Reset reset:
@@ -63,11 +63,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					Reset(reset);
 					break;
 				case DataSource_SlidingWindow sw:
-					_trace.Verbose($"{Name} dso-sw ds:{sw.Name} ct:{sw.NewItems.Count}");
+					_trace.Verbose($"{Name} dso-sw ds:{sw.Name} ct:{sw.Items.Count}");
 					SlidingWindow(sw);
 					break;
 				case DataSource_Remove remove:
-					_trace.Verbose($"{Name} dso-remove ds:{remove.Name} front:{remove.AtFront} ct:{remove.Count}");
+					_trace.Verbose($"{Name} dso-remove ds:{remove.Name} front:{remove.AtHead} ct:{remove.Count}");
 					Remove(remove);
 					break;
 			}
