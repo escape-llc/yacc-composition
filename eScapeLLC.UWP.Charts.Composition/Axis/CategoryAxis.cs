@@ -5,13 +5,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.ServiceModel.Channels;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Controls.Maps;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon,
-		IRequireEnterLeave, IChartAxis, IListController<CategoryAxis.Axis_ItemState>,
+		IRequireEnterLeave, IChartAxis, IOperationController<CategoryAxis.Axis_ItemState>,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
 		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
@@ -85,14 +87,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// List of active TextBlocks for labels.
 		/// </summary>
-		protected List<ItemStateCore> AxisLabels { get; set; }
+		protected List<ItemStateCore> ItemState { get; set; }
 		protected Binding LabelBinding { get; set; }
 		#endregion
 		#region ctor
 		public CategoryAxis() {
 			Type = AxisType.Category;
 			Side = Side.Bottom;
-			AxisLabels = new List<ItemStateCore>();
+			ItemState = new List<ItemStateCore>();
 		}
 		#endregion
 		#region IRequireEnterLeave
@@ -149,7 +151,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				item.ResetElement();
 			}
 		}
-		void IListController<Axis_ItemState>.EnteringItem(int index, ItemTransition it, Axis_ItemState item) {
+		void IOperationController<Axis_ItemState>.EnteringItem(int index, ItemTransition it, Axis_ItemState item) {
 			item.Reindex(index);
 			bool elementSelected2 = IsSelected(item);
 			if (elementSelected2) {
@@ -158,7 +160,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			UpdateStyle(item);
 			Entering(item);
 		}
-		void IListController<Axis_ItemState>.LiveItem(int index, ItemTransition it, Axis_ItemState item) {
+		void IOperationController<Axis_ItemState>.LiveItem(int index, ItemTransition it, Axis_ItemState item) {
 			item.Reindex(index);
 			bool elementSelected = IsSelected(item);
 			if (elementSelected && item.Element == null) {
@@ -170,57 +172,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			UpdateStyle(item);
 		}
-		void IListController<Axis_ItemState>.ExitingItem(int index, ItemTransition it, Axis_ItemState item) {
+		void IOperationController<Axis_ItemState>.ExitingItem(int index, ItemTransition it, Axis_ItemState item) {
 			if (item.Element != null) {
 				Exiting(item);
 			}
 		}
 		#endregion
 		#region virtual data source handlers
-		IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> Entering(System.Collections.IList items, ItemTransition it) {
-			for (int ix = 0; ix < items.Count; ix++) {
-				var state = CreateState(ix, items[ix]);
-				yield return (ItemStatus.Enter, it, state);
-			}
-		}
-		protected virtual void Reset(DataSource_Reset dsr) {
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(dsr.Items, ItemTransition.Tail);
-			var itemstate = new List<ItemStateCore>();
-			ProcessItems<Axis_ItemState>(exit.Concat(enter), this, itemstate);
-			AxisLabels = itemstate;
+		protected virtual void Reset(DataSource_Reset reset) {
+			var ops = reset.CreateOperations(ItemState, Entering);
+			UpdateCore(ops);
 		}
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Take(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Skip(slidingWindow.NewItems.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(slidingWindow.NewItems, ItemTransition.Tail);
-			var itemstate = new List<ItemStateCore>();
-			ProcessItems<Axis_ItemState>(exit.Concat(live).Concat(enter), this, itemstate);
-			AxisLabels = itemstate;
+			var ops = slidingWindow.CreateOperations(ItemState, Entering);
+			UpdateCore(ops);
 		}
 		protected virtual void Add(DataSource_Add add) {
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> enter = Entering(add.NewItems, add.AtFront ? ItemTransition.Head : ItemTransition.Tail);
-			IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> final = add.AtFront ? enter.Concat(live) : live.Concat(enter);
-			var itemstate = new List<ItemStateCore>();
-			ProcessItems<Axis_ItemState>(final, this, itemstate);
-			AxisLabels = itemstate;
+			var ops = add.CreateOperations(ItemState, Entering);
+			UpdateCore(ops);
 		}
 		protected virtual void Remove(DataSource_Remove remove) {
-			if (remove.AtFront) {
-				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Take(remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Head, xx as Axis_ItemState));
-				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Skip(remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
-				var itemstate = new List<ItemStateCore>();
-				ProcessItems<Axis_ItemState>(exit.Concat(live), this, itemstate);
-				AxisLabels = itemstate;
-			}
-			else {
-				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> live = AxisLabels.Take(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Live, ItemTransition.None, xx as Axis_ItemState));
-				IEnumerable<(ItemStatus st, ItemTransition it, Axis_ItemState state)> exit = AxisLabels.Skip(AxisLabels.Count - remove.Count).Select(xx => (ItemStatus.Exit, ItemTransition.Tail, xx as Axis_ItemState));
-				var itemstate = new List<ItemStateCore>();
-				ProcessItems<Axis_ItemState>(live.Concat(exit), this, itemstate);
-				AxisLabels = itemstate;
-			}
+			var ops = remove.CreateOperations<Axis_ItemState>(ItemState);
+			UpdateCore(ops);
 		}
 		#endregion
 		#region handlers
@@ -266,13 +239,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return 0;
 		}
 		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
-			if (AxisLabels.Count == 0) return;
+			if (ItemState.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var rctx = message.ContextFor(this);
 			var pmatrix = ProjectionFor(rctx.Area, Reverse);
 			var matx = Matrix3x2.Multiply(pmatrix.model, pmatrix.proj);
 			double dx = 0, dy = 0;
-			foreach (Axis_ItemState state in AxisLabels) {
+			foreach (Axis_ItemState state in ItemState) {
 				if (state.Element == null) continue;
 				var point = new Vector2(state.Index + (Reverse ? 1 : 0), YOffSetFor());
 				var dc = Vector2.Transform(point, matx);
@@ -285,6 +258,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region helpers
+		/// <summary>
+		/// Fabricate state used for entering items.
+		/// </summary>
+		/// <param name="items">Item source.</param>
+		/// <returns>New instance.</returns>
+		IEnumerable<Axis_ItemState> Entering(System.Collections.IList items) {
+			for (int ix = 0; ix < items.Count; ix++) {
+				var state = CreateState(ix, items[ix]);
+				yield return state;
+			}
+		}
+		/// <summary>
+		/// Core part of the update cycle.
+		/// </summary>
+		/// <param name="items">Sequence of item operations.</param>
+		void UpdateCore(IEnumerable<ItemStateOperation<Axis_ItemState>> items) {
+			var itemstate = new List<ItemStateCore>();
+			foreach (var item in items) {
+				item.Execute(this, itemstate);
+			}
+			ItemState = itemstate;
+		}
 		FrameworkElement CreateElement(TextShim text) {
 			var fe = default(FrameworkElement);
 			if (LabelTemplate != null) {

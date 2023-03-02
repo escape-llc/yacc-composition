@@ -27,7 +27,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
 	public class ColumnSeries : CategoryValueSeries<ColumnSeries_ItemState>,
-		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IListController<ColumnSeries_ItemState>,
+		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IOperationController<ColumnSeries_ItemState>,
 		IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
@@ -102,7 +102,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IListController<>
-		void IListController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+		void IOperationController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			_trace.Verbose($"{Name}.Live index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
@@ -120,7 +120,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				UpdateOffset(state);
 			}
 		}
-		void IListController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+		void IOperationController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			_trace.Verbose($"{Name}.Entering index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
 			bool elementSelected2 = IsSelected(state);
@@ -131,7 +131,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				UpdateOffset(state);
 			}
 		}
-		void IListController<ColumnSeries_ItemState>.ExitingItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
+		void IOperationController<ColumnSeries_ItemState>.ExitingItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			_trace.Verbose($"{Name}.Exiting index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			if (state.Element != null) {
 				Exiting(state, it);
@@ -214,22 +214,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected virtual bool IsSelected(ColumnSeries_ItemState item) {
 			return true;
 		}
-		/// <summary>
-		/// Core part of the update cycle.
-		/// </summary>
-		/// <param name="items">Sequence of item states.</param>
-		protected virtual void UpdateCore(IEnumerable<(ItemStatus st, ItemTransition it, ColumnSeries_ItemState state)> items) {
-			var itemstate = new List<ItemStateCore>();
-			ProcessItems(items, this, itemstate);
-			ItemState = itemstate;
-		}
-		protected virtual void UpdateCore(IEnumerable<ItemStateOperation<ColumnSeries_ItemState>> items) {
-			var itemstate = new List<ItemStateCore>();
-			foreach (var item in items) {
-				item.Execute(this as IListController<ColumnSeries_ItemState>, itemstate);
-			}
-			ItemState = itemstate;
-		}
 		#endregion
 		#region data operation extensions
 		protected override void UpdateModelTransform() {
@@ -261,8 +245,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			int index = 0;
-			foreach(var op in Pending.Where(xx => xx is ItemsEnteringOrLive<ColumnSeries_ItemState>)) {
-				foreach(var item in (op as ItemsEnteringOrLive<ColumnSeries_ItemState>).Items) {
+			foreach(var op in Pending.Where(xx => xx is ItemsWithOffset<ColumnSeries_ItemState>)) {
+				foreach(var item in (op as ItemsWithOffset<ColumnSeries_ItemState>).Items) {
 					UpdateLimits(index, item.DataValue, 0);
 					index++;
 				}
@@ -274,7 +258,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (Container == null) return;
 			_trace.Verbose($"{Name} model-complete");
 			try {
-				UpdateCore(Pending);
+				UpdateCore(this, Pending);
 			}
 			finally {
 				Pending = null;
