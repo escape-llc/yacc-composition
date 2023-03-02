@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;

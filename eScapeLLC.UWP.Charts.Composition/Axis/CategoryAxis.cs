@@ -5,10 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.ServiceModel.Channels;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Maps;
 using Windows.UI.Xaml.Data;
 
 namespace eScapeLLC.UWP.Charts.Composition {
