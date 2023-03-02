@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using Windows.UI.Xaml.Controls;
 
 namespace eScapeLLC.UWP.Charts.Composition.Events {
@@ -152,49 +153,54 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	#endregion
 	#region CommandPort
 	/// <summary>
-	/// Ability to accept operations forwarded from command port.
+	/// Ability to accept operations forwarded from CommandPort.
 	/// </summary>
 	/// <typeparam name="C">Command type.</typeparam>
-	public interface IForwardCommandPort<C> where C: CommandPort_RefreshRequest {
+	/// <typeparam name="O">Operation type.</typeparam>
+	public interface IForwardCommandPort<C, O> where O: CommandPort_Operation where C: CommandPort_Request<O> {
 		/// <summary>
 		/// Accept forwarded message.
 		/// </summary>
 		/// <param name="msg">message.</param>
 		void Forward(C msg);
 	}
-	public abstract class CommandPort_Operation { }
-	public abstract class CommandPort_RefreshRequest { }
-	#endregion
-	#region Component_RefreshRequest
 	/// <summary>
-	/// Specific component is requesting refresh via command port.
+	/// Abstract base of CommandPort operations.
 	/// </summary>
-	public sealed class Component_RefreshRequest : CommandPort_RefreshRequest {
+	public abstract class CommandPort_Operation { }
+	/// <summary>
+	/// Abstract base of CommandPort requests.
+	/// </summary>
+	/// <typeparam name="O">CommandPort operation type.</typeparam>
+	public abstract class CommandPort_Request<O> where O: CommandPort_Operation {
+		/// <summary>
+		/// Name of initiator.
+		/// </summary>
 		public readonly string Name;
-		public readonly Component_Operation Operation;
-		public Component_RefreshRequest(Component_Operation op) {
+		/// <summary>
+		/// Operation to perform.
+		/// </summary>
+		public readonly O Operation;
+		protected CommandPort_Request(string name, O op) {
+			Name = name;
 			Operation = op;
-			Name = op.Component.Name;
 		}
 	}
 	#endregion
-	#region DataSource_RefreshRequest
+	#region Component_Request
 	/// <summary>
-	/// Data source is requesting an operation via command port.
+	/// <see cref="ChartComponent"/> is requesting an operation via command port.
 	/// </summary>
-	public sealed class DataSource_RefreshRequest : CommandPort_RefreshRequest {
-		/// <summary>
-		/// Name of data source.
-		/// </summary>
-		public readonly string Name;
-		/// <summary>
-		/// Command to execute.
-		/// </summary>
-		public readonly DataSource_Operation Operation;
-		public DataSource_RefreshRequest(string name, DataSource_Operation cmd) {
-			Name = name;
-			Operation = cmd;
-		}
+	public sealed class Component_Request : CommandPort_Request<Component_Operation> {
+		public Component_Request(Component_Operation op) :base(op.Component.Name, op) { }
+	}
+	#endregion
+	#region DataSource_Request
+	/// <summary>
+	/// <see cref="DataSource"/> is requesting an operation via command port.
+	/// </summary>
+	public sealed class DataSource_Request : CommandPort_Request<DataSource_Operation> {
+		public DataSource_Request(string name, DataSource_Operation cmd) :base(name, cmd) { }
 	}
 	#endregion
 }

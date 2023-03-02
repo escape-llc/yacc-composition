@@ -137,7 +137,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region Chart
 	[TemplatePart(Name = PART_Canvas, Type = typeof(Canvas))]
-	public sealed class Chart : Control, IForwardCommandPort<DataSource_RefreshRequest>, IForwardCommandPort<Component_RefreshRequest> {
+	public sealed class Chart : Control, IForwardCommandPort<DataSource_Request, DataSource_Operation>, IForwardCommandPort<Component_Request, Component_Operation> {
 		static readonly LogTools.Flag _trace = LogTools.Add("Chart", LogTools.Level.Error);
 		/// <summary>
 		/// Control template part: canvas.
@@ -446,11 +446,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Fatal("Forward: failed to enqueue");
 			}
 		}
-		void IForwardCommandPort<DataSource_RefreshRequest>.Forward(DataSource_RefreshRequest dsrr) {
+		void IForwardCommandPort<DataSource_Request, DataSource_Operation>.Forward(DataSource_Request dsrr) {
 			_trace.Verbose($"forward-ds '{dsrr.Name}' {dsrr.Operation}");
 			ForwardCommon(new List<CommandPort_Operation>() { dsrr.Operation });
 		}
-		void IForwardCommandPort<Component_RefreshRequest>.Forward(Component_RefreshRequest crr) {
+		void IForwardCommandPort<Component_Request, Component_Operation>.Forward(Component_Request crr) {
 			_trace.Verbose($"forward-cc '{crr.Name}' {crr.Operation}");
 			ForwardCommon(new List<CommandPort_Operation>() { crr.Operation });
 		}

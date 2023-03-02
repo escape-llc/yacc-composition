@@ -4,23 +4,24 @@ using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Linq;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Shapes;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region DataSource_Operation
 	public abstract class DataSource_Operation : CommandPort_Operation {
 		public string Name { get; internal set; }
-		protected DataSource_Operation() {
-		}
+		protected DataSource_Operation() { }
 	}
+	#endregion
+	#region DataSource_Clear
 	/// <summary>
 	/// Empty all items.
 	/// </summary>
 	public sealed class DataSource_Clear : DataSource_Operation {
 	}
+	#endregion
+	#region DataSource_Typed
 	/// <summary>
 	/// Makes it easier to deal with generic versions without knowing the type.
 	/// </summary>
@@ -33,18 +34,22 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public Type ItemType { get; protected set; }
 	}
+	#endregion
+	#region DataSource_Reset
 	/// <summary>
 	/// Exit all existing elements, Enter contents of the given list.
 	/// </summary>
 	public sealed class DataSource_Reset : DataSource_Typed {
 		public readonly IList Items;
 		public DataSource_Reset(IList items, Type type) :base(type) { this.Items = items; }
-		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
-			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Select(xx => xx as S).ToList());
-			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList());
-			return new ItemStateOperation<S>[] { eexit, eenter };
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
+			ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Select(xx => xx as S).ToList());
+			ItemStateOperation<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList());
+			return new ItemStateOperation<S>[] { exit, enter };
 		}
 	}
+	#endregion
+	#region DataSource_SlidingWindow
 	/// <summary>
 	/// Exit elements from head, enter same number to tail.
 	/// </summary>
@@ -54,13 +59,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public readonly IList NewItems;
 		public DataSource_SlidingWindow(IList items, Type type) :base(type) { this.NewItems = items; }
-		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
-			ItemsExiting<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Take(NewItems.Count).Select(xx => xx as S).ToList());
-			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Skip(NewItems.Count).Select(xx => xx as S).ToList());
-			ItemsEntering<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, entering(NewItems).ToList(), elive.Items.Count);
-			return new ItemStateOperation<S>[] { eexit, elive, eenter };
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
+			ItemsExiting<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Take(NewItems.Count).Select(xx => xx as S).ToList());
+			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Skip(NewItems.Count).Select(xx => xx as S).ToList());
+			ItemsEntering<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(NewItems).ToList(), live.Items.Count);
+			return new ItemStateOperation<S>[] { exit, live, enter };
 		}
 	}
+	#endregion
+	#region DataSource_Add
 	/// <summary>
 	/// Add new elements to front/rear.
 	/// </summary>
@@ -68,42 +75,46 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public readonly bool AtFront;
 		public readonly IList NewItems;
 		public DataSource_Add(IList items, Type type, bool af = false) :base(type) { this.NewItems = items; AtFront = af; }
-		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList, IEnumerable<S>> entering) where S : ItemStateCore {
-			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Select(xx => xx as S).ToList(), AtFront ? NewItems.Count : 0);
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items, Func<IList, IEnumerable<S>> entering) where S : ItemStateCore {
+			ItemsLive<S> live = new ItemsLive<S>(ItemTransition.None, items.Select(xx => xx as S).ToList(), AtFront ? NewItems.Count : 0);
 			var itmp = entering(NewItems);
 			if (AtFront) {
 				itmp = itmp.Reverse();
 			}
-			ItemStateOperation<S> eenter = new ItemsEntering<S>(AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtFront ? 0 : elive.Items.Count);
-			return AtFront ? new[] { eenter, elive } : new[] { elive, eenter };
+			ItemStateOperation<S> enter = new ItemsEntering<S>(AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtFront ? 0 : live.Items.Count);
+			return AtFront ? new[] { enter, live } : new[] { live, enter };
 		}
 	}
+	#endregion
+	#region DataSource_Remove
 	/// <summary>
 	/// Exit existing elements from front/rear.
 	/// </summary>
 	public sealed class DataSource_Remove : DataSource_Operation {
 		public readonly bool AtFront;
-		public readonly int Count;
-		public DataSource_Remove(int count, bool atFront) {
+		public readonly uint Count;
+		public DataSource_Remove(uint count, bool atFront) {
 			AtFront = atFront;
 			Count = count;
 		}
-		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate) where S : ItemStateCore {
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> items) where S : ItemStateCore {
 			if (AtFront) {
-				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Take(Count).Select(xx => xx as S).ToList());
-				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Skip(Count).Select(xx => xx as S).ToList());
-				return new[] { eexit, elive };
+				ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Take((int)Count).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> live = new ItemsLive<S>(ItemTransition.None, items.Skip((int)Count).Select(xx => xx as S).ToList());
+				return new[] { exit, live };
 			}
 			else {
-				var ct = itemstate.Count - Count;
-				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Take(ct).Select(xx => xx as S).ToList());
-				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Tail, itemstate.Skip(ct).Select(xx => xx as S).ToList());
-				return new[] { eexit, elive };
+				var ct = items.Count - Count;
+				ItemStateOperation<S> live = new ItemsLive<S>(ItemTransition.None, items.Take((int)ct).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Tail, items.Skip((int)ct).Select(xx => xx as S).ToList());
+				return new[] { exit, live };
 			}
 		}
 	}
+	#endregion
+	#region DataSource
 	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
-		static LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
+		static readonly LogTools.Flag _trace = LogTools.Add("DataSource", LogTools.Level.Error);
 		#region DPs
 		/// <summary>
 		/// Identifies <see cref="CommandPort"/> DP.
@@ -128,36 +139,70 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region properties
 		/// <summary>
-		/// Means for an "external source" (like a View Model) to attach a data binding to this property and trigger data source operations.
+		/// An "external source" (like a View Model) SHOULD attach a data binding to this property to trigger data source operations.
 		/// </summary>
 		public DataSource_Operation CommandPort { get { return (DataSource_Operation)GetValue(CommandPortProperty); } set { SetValue(CommandPortProperty, value); } }
 		/// <summary>
-		/// Used for unsolicited messages.
+		/// Used to forward unsolicited messages.
 		/// </summary>
-		public IForwardCommandPort<DataSource_RefreshRequest> Forward { get; set; }
+		public IForwardCommandPort<DataSource_Request, DataSource_Operation> Forward { get; set; }
 		#endregion
 		#region operation factory methods
+		/// <summary>
+		/// Produce a clear operation.
+		/// </summary>
+		/// <returns>New instance.</returns>
+		public static DataSource_Clear Clear() { return new DataSource_Clear(); }
+		/// <summary>
+		/// Produce a reset operation.
+		/// </summary>
+		/// <typeparam name="T">Item type.</typeparam>
+		/// <param name="items">New items.</param>
+		/// <returns>New instance.</returns>
 		public static DataSource_Reset Reset<T>(IList<T> items) {
+			if (items.Count == 0) throw new ArgumentException(nameof(items));
 			return new DataSource_Reset(items as IList, typeof(T));
 		}
-		public static DataSource_Add Add<T>(IList<T> items, bool atfront = false) {
-			return new DataSource_Add(items as IList, typeof(T), atfront);
+		/// <summary>
+		/// Produce an Add operation.
+		/// </summary>
+		/// <typeparam name="T">Item type.</typeparam>
+		/// <param name="items">New items.</param>
+		/// <param name="athead">true: target head; false: target tail.</param>
+		/// <returns>New instance.</returns>
+		public static DataSource_Add Add<T>(IList<T> items, bool athead = false) {
+			if (items.Count == 0) throw new ArgumentException(nameof(items));
+			return new DataSource_Add(items as IList, typeof(T), athead);
 		}
+		/// <summary>
+		/// Produce a Sliding Window operation.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="items"></param>
+		/// <returns>New instance.</returns>
 		public static DataSource_SlidingWindow SlidingWindow<T>(IList<T> items) {
+			if (items.Count == 0) throw new ArgumentException(nameof(items));
 			return new DataSource_SlidingWindow(items as IList, typeof(T));
 		}
-		public static DataSource_Remove Remove(int count, bool atfront = false) {
-			return new DataSource_Remove(count, atfront);
+		/// <summary>
+		/// Produce a Remove operation.
+		/// </summary>
+		/// <param name="count">Number of items.</param>
+		/// <param name="athead">true: target head; false: target tail.</param>
+		/// <returns>New instance.</returns>
+		public static DataSource_Remove Remove(uint count, bool athead = false) {
+			if (count == 0) throw new ArgumentException(nameof(count));
+			return new DataSource_Remove(count, athead);
 		}
 		#endregion
 		#region helpers
 		/// <summary>
-		/// Fire refresh request event.
+		/// Forward <see cref="CommandPort"/> operations.
 		/// </summary>
-		/// <param name="dso">Type of change.</param>
+		/// <param name="dso">Data source operation.</param>
 		void Command(DataSource_Operation dso) {
 			dso.Name = Name;
-			Forward.Forward(new DataSource_RefreshRequest(Name, dso));
+			Forward?.Forward(new DataSource_Request(Name, dso));
 		}
 		#endregion
 		#region handlers
@@ -168,4 +213,5 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 	}
+	#endregion
 }

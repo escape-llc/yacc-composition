@@ -104,7 +104,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					aus = AxisUpdateState.Value;
 				}
 				var cop = new Component_Operation(hr, RefreshRequestType.ValueDirty, aus);
-				hr.Forward?.Forward(new Component_RefreshRequest(cop));
+				hr.Forward?.Forward(new Component_Request(cop));
 			}
 		}
 		#endregion

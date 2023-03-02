@@ -195,8 +195,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="rrt">Request type.</param>
 		/// <param name="aus">Axis update status.</param>
 		protected void Refresh(RefreshRequestType rrt, AxisUpdateState aus) {
-			//RefreshRequest?.Invoke(this, new RefreshRequestEventArgs(rrt, aus, this));
-			Forward?.Forward(new Component_RefreshRequest(new Component_Operation(this, rrt, aus)));
+			Forward?.Forward(new Component_Request(new Component_Operation(this, rrt, aus)));
 		}
 		protected void EnsureComponents(IChartComponentContext icrc) {
 			var icei = icrc as IChartErrorInfo;

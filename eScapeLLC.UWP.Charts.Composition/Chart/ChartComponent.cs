@@ -190,7 +190,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Use to enqueue unit-of-work to the render pipeline.
 		/// </summary>
-		public IForwardCommandPort<Component_RefreshRequest> Forward { get; set; }
+		public IForwardCommandPort<Component_Request, Component_Operation> Forward { get; set; }
 		/// <summary>
 		/// Return the name if set, otherwise the type.
 		/// </summary>
