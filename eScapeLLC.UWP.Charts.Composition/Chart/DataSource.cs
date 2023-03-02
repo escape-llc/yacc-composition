@@ -5,7 +5,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Shapes;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public abstract class DataSource_Operation : CommandPort_Operation {
@@ -36,6 +39,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public sealed class DataSource_Reset : DataSource_Typed {
 		public readonly IList Items;
 		public DataSource_Reset(IList items, Type type) :base(type) { this.Items = items; }
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
+			ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Select(xx => xx as S).ToList());
+			ItemStateOperation<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList());
+			return new ItemStateOperation<S>[] { eexit, eenter };
+		}
 	}
 	/// <summary>
 	/// Exit elements from head, enter same number to tail.
@@ -46,6 +54,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public readonly IList NewItems;
 		public DataSource_SlidingWindow(IList items, Type type) :base(type) { this.NewItems = items; }
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList,IEnumerable<S>> entering) where S: ItemStateCore {
+			ItemsExiting<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Take(NewItems.Count).Select(xx => xx as S).ToList());
+			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Skip(NewItems.Count).Select(xx => xx as S).ToList());
+			ItemsEntering<S> eenter = new ItemsEntering<S>(ItemTransition.Tail, entering(NewItems).ToList(), elive.Items.Count);
+			return new ItemStateOperation<S>[] { eexit, elive, eenter };
+		}
 	}
 	/// <summary>
 	/// Add new elements to front/rear.
@@ -54,6 +68,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public readonly bool AtFront;
 		public readonly IList NewItems;
 		public DataSource_Add(IList items, Type type, bool af = false) :base(type) { this.NewItems = items; AtFront = af; }
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate, Func<IList, IEnumerable<S>> entering) where S : ItemStateCore {
+			ItemsLive<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Select(xx => xx as S).ToList(), AtFront ? NewItems.Count : 0);
+			var itmp = entering(NewItems);
+			if (AtFront) {
+				itmp = itmp.Reverse();
+			}
+			ItemStateOperation<S> eenter = new ItemsEntering<S>(AtFront ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtFront ? 0 : elive.Items.Count);
+			return AtFront ? new[] { eenter, elive } : new[] { elive, eenter };
+		}
 	}
 	/// <summary>
 	/// Exit existing elements from front/rear.
@@ -64,6 +87,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public DataSource_Remove(int count, bool atFront) {
 			AtFront = atFront;
 			Count = count;
+		}
+		public ItemStateOperation<S>[] CreateOperations<S>(List<ItemStateCore> itemstate) where S : ItemStateCore {
+			if (AtFront) {
+				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Head, itemstate.Take(Count).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Skip(Count).Select(xx => xx as S).ToList());
+				return new[] { eexit, elive };
+			}
+			else {
+				var ct = itemstate.Count - Count;
+				ItemStateOperation<S> elive = new ItemsLive<S>(ItemTransition.None, itemstate.Take(ct).Select(xx => xx as S).ToList());
+				ItemStateOperation<S> eexit = new ItemsExiting<S>(ItemTransition.Tail, itemstate.Skip(ct).Select(xx => xx as S).ToList());
+				return new[] { eexit, elive };
+			}
 		}
 	}
 	public class DataSource : FrameworkElement, IConsumer<DataContextChangedEventArgs> {
