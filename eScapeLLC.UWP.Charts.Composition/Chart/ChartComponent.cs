@@ -50,31 +50,135 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 	}
 	#endregion
-	#region IListController<S>
+	#region IOperationController<S>
 	/// <summary>
-	/// Manage state operations on a list of state items.
+	/// Manage state operations on a sequence of state items.
 	/// Including but not limited to Visual Tree management, Offset updates, Animation.
 	/// </summary>
 	/// <typeparam name="S">Item state type.</typeparam>
-	public interface IListController<S> where S : ItemStateCore {
+	public interface IOperationController<S> where S : ItemStateCore {
 		/// <summary>
 		/// This item is entering.
 		/// </summary>
-		/// <param name="index">Current index; MAY be different than the item's index.</param>
+		/// <param name="index">Assigned index; MAY be different than the item's index.</param>
+		/// <param name="it">Target end of list.</param>
 		/// <param name="item">Target item.</param>
 		void EnteringItem(int index, ItemTransition it, S item);
 		/// <summary>
 		/// This item is exiting.
 		/// </summary>
-		/// <param name="index">Current (exiting) index; MAY be different than the item's index.</param>
+		/// <param name="index">Exiting index; MAY be different than the item's index.</param>
+		/// <param name="it">Target end of list.</param>
 		/// <param name="item">Target item.</param>
 		void ExitingItem(int index, ItemTransition it, S item);
 		/// <summary>
 		/// This item is "live" meaning it already existed before the operation started.
+		/// MAY get reindexed.
 		/// </summary>
-		/// <param name="index">Current index; MAY be different than the item's index.</param>
+		/// <param name="index">Assigned index; MAY be different than the item's index.</param>
+		/// <param name="it">Target end of list.</param>
 		/// <param name="item">Target item.</param>
 		void LiveItem(int index, ItemTransition it, S item);
+	}
+	#endregion
+	#region ItemStateOperation<S>
+	/// <summary>
+	/// Represents an operation on the item state list.
+	/// </summary>
+	/// <typeparam name="S">Type of the item state.</typeparam>
+	public abstract class ItemStateOperation<S> where S : ItemStateCore {
+		/// <summary>
+		/// Target end of the list.
+		/// </summary>
+		public ItemTransition Transition { get; private set; }
+		protected ItemStateOperation(ItemTransition it) {
+			Transition = it;
+		}
+		/// <summary>
+		/// Perform the operation.
+		/// </summary>
+		/// <param name="ilc">List controller callback.</param>
+		/// <param name="itemstate">Accumulator.</param>
+		public abstract void Execute(IOperationController<S> ilc, List<ItemStateCore> itemstate);
+	}
+	/// <summary>
+	/// Successive operations MUST use continuous indices for entering and/or live items [0..i][i+1..n-1].
+	/// Exiting items the index is not relevant and start at zero.
+	/// </summary>
+	/// <typeparam name="S">Type of the item state.</typeparam>
+	public abstract class ItemsWithOffset<S> : ItemStateOperation<S> where S : ItemStateCore {
+		/// <summary>
+		/// The items affected (action indicated by subclasses).
+		/// </summary>
+		public IReadOnlyList<S> Items { get; private set; }
+		/// <summary>
+		/// Live and Entering share the same set of indices [0..i][i+1..n-1].
+		/// Use this to offset the indices accordingly.
+		/// </summary>
+		public int Offset { get; private set; }
+		protected ItemsWithOffset(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it) {
+			Items = items;
+			Offset = offset;
+		}
+	}
+	/// <summary>
+	/// Items are entering.
+	/// </summary>
+	/// <typeparam name="S">Type of the item state.</typeparam>
+	public class ItemsEntering<S> : ItemsWithOffset<S> where S : ItemStateCore {
+		public ItemsEntering(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
+		/// <summary>
+		/// Make callback for entering item and accumulate.
+		/// </summary>
+		/// <param name="ilc">Use for callback.</param>
+		/// <param name="itemstate">Use to accumulate.</param>
+		public override void Execute(IOperationController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.EnteringItem(Offset + ix, Transition, Items[ix]);
+				itemstate.Add(Items[ix]);
+			}
+		}
+	}
+	/// <summary>
+	/// Items are live, and MAY move to a different start index.
+	/// </summary>
+	/// <typeparam name="S">Type of the item state.</typeparam>
+	public class ItemsLive<S> : ItemsWithOffset<S> where S : ItemStateCore {
+		public ItemsLive(ItemTransition it, IReadOnlyList<S> items, int offset = 0) : base(it, items, offset) { }
+		/// <summary>
+		/// Make callback for live item and accumulate.
+		/// </summary>
+		/// <param name="ilc">Use for callback.</param>
+		/// <param name="itemstate">Use to accumulate.</param>
+		public override void Execute(IOperationController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.LiveItem(Offset + ix, Transition, Items[ix]);
+				itemstate.Add(Items[ix]);
+			}
+		}
+	}
+	/// <summary>
+	/// Items are exiting.
+	/// </summary>
+	/// <typeparam name="S">Type of the item state.</typeparam>
+	public class ItemsExiting<S> : ItemStateOperation<S> where S : ItemStateCore {
+		/// <summary>
+		/// The item(s) exiting.
+		/// </summary>
+		public IReadOnlyList<S> Items { get; private set; }
+		public ItemsExiting(ItemTransition it, IReadOnlyList<S> items) : base(it) {
+			Items = items;
+		}
+		/// <summary>
+		/// Make callback for live item and DO NOT accumulate.
+		/// </summary>
+		/// <param name="ilc">Use for callback.</param>
+		/// <param name="itemstate">Not used.</param>
+		public override void Execute(IOperationController<S> ilc, List<ItemStateCore> itemstate) {
+			for (int ix = 0; ix < Items.Count; ix++) {
+				ilc.ExitingItem(ix, Transition, Items[ix]);
+			}
+		}
 	}
 	#endregion
 	#region ChartComponent
@@ -116,34 +220,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			};
 			target.ClearValue(dp);
 			BindingOperations.SetBinding(target, dp, bx);
-		}
-		/// <summary>
-		/// Generic processing of the exit/live/enter items.
-		/// </summary>
-		/// <param name="list">Instruction list.</param>
-		/// <param name="itemstate">Output list. Accumulates Live and Enter items.</param>
-		public static void ProcessItems<S>(IEnumerable<(ItemStatus st, ItemTransition it, S state)> list, IListController<S> ilc, List<ItemStateCore> itemstate) where S : ItemStateCore {
-			int index = 0;
-			int xindex = 0;
-			foreach ((ItemStatus st, ItemTransition it, S state) in list) {
-				if (state == null) continue;
-				switch (st) {
-					case ItemStatus.Exit:
-						ilc.ExitingItem(xindex, it, state);
-						xindex++;
-						break;
-					case ItemStatus.Live:
-						ilc.LiveItem(index, it, state);
-						itemstate.Add(state);
-						index++;
-						break;
-					case ItemStatus.Enter:
-						ilc.EnteringItem(index, it, state);
-						itemstate.Add(state);
-						index++;
-						break;
-				}
-			}
 		}
 		#endregion
 	}
