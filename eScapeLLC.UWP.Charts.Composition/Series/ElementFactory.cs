@@ -1,6 +1,4 @@
-﻿using eScapeLLC.UWP.Charts.Composition.Events;
-using System;
-using System.ComponentModel;
+﻿using System;
 using System.Numerics;
 using Windows.UI.Composition;
 
@@ -139,12 +137,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	#endregion
 	#region ValueContext
+	/// <summary>
+	/// Context for single value on <see cref="Component2Axis"/>.
+	/// </summary>
 	public class ValueContext : IElementFactoryContext, IElementExtentContext, IElementValueContext, IElementDataOperation {
 		public Compositor Compositor { get; private set; }
 		public Axis_Extents Component1Axis { get; private set; }
 		public Axis_Extents Component2Axis { get; private set; }
 		public double Value { get; private set; }
-
 		public ItemTransition Transition { get; private set; }
 
 		public ValueContext(Compositor compositor, double value, Axis_Extents component1Axis, Axis_Extents component2Axis, ItemTransition transition) {
@@ -236,24 +236,48 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="cc"></param>
 		void Unprepare(Compositor cc);
 		/// <summary>
-		/// Start the indicated animation (sequence).
+		/// Initialize transform components before first use of <see cref="Transform(IElementFactoryContext, Matrix3x2)"/>.
+		/// This prevents an initial animation from Identity Matrix to the first Model.
+		/// SHOULD call this ONCE per lifetime.
 		/// </summary>
-		/// <param name="key">Transform,Offset.</param>
-		/// <param name="iefc">Element context.</param>
-		/// <param name="co">Object to animate.</param>
-		/// <param name="cfg">Callback to act on the <paramref name="co"/>.  Enter: add to VT.  Exit: remove from VT. Transform: configure animation.</param>
-		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
-		bool StartAnimation(string key, IElementFactoryContext iefc, CompositionObject co, Action<CompositionAnimation> cfg = null);
+		/// <param name="model">Use to initialize animation properties.</param>
+		void InitTransform(Matrix3x2 model);
 		/// <summary>
-		/// Overload for Enter and Exit animation.
+		/// Animate the TransformMatrix to the given value.
+		/// SHOULD only call when the transform has actually changed.
+		/// </summary>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="model">New model transform.</param>
+		void Transform(IElementFactoryContext iefc, Matrix3x2 model);
+		/// <summary>
+		/// Add to VT and start the Enter animation.
+		/// Connect TransformMatrix expression animation.
 		/// </summary>
 		/// <param name="key">Enter,Exit.</param>
 		/// <param name="iefc">Element context.</param>
 		/// <param name="ssc">Container collection to manage VT.</param>
 		/// <param name="co">Object to animate.</param>
-		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters/leaves the VT.</param>
+		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters the VT.</param>
 		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
-		bool StartAnimation(string key, IElementFactoryContext iefc, CompositionShapeCollection ssc, CompositionObject co, Action<CompositionObject> cb = null);
+		bool Enter(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null);
+		/// <summary>
+		/// Start the Exit animation and remove from VT when complete.
+		/// Disconnect TransformMatrix expression animation.
+		/// </summary>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="ssc">Container collection to manage VT.</param>
+		/// <param name="cb">Callback to act on the <paramref name="co"/> after it exits the VT.</param>
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool Exit(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null);
+		/// <summary>
+		/// Start the Offset animation.
+		/// </summary>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="cb">Callback.</param>
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool Offset(IElementFactoryContext iefc, CompositionObject co, Action<CompositionObject> cb = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
 	}
 	#endregion
