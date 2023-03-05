@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -142,6 +143,25 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			else if (vx == Side.Top || vx == Side.Bottom) return Side.Left;
 			throw new ArgumentException(nameof(vx));
 		}
+		void EnsureSprite(Axis_Extents cat, AxisOrientation c1ori, Matrix3x2 model, Vector2 offset) {
+			// (0,0)...(1,0)
+			var v1 = MappingSupport.ToVector(0, c1ori, 0, ValueAxis.Orientation);
+			var v2 = MappingSupport.ToVector(1, c1ori, 0, ValueAxis.Orientation);
+			var gctx = new LineGeometryContext(Container.Compositor, v1, v2);
+			var sprite = ElementFactory.CreateElement(gctx);
+			sprite.TransformMatrix = model;
+			sprite.Offset = offset;
+			Sprite = sprite;
+			if (AnimationFactory != null) {
+				var ectx = new ValueContext(Container.Compositor, Value, cat, ValueAxis, ItemTransition.None);
+				if (!AnimationFactory.Enter(ectx, Sprite, Container.Shapes)) {
+					Container.Shapes.Add(Sprite);
+				}
+			}
+			else {
+				Container.Shapes.Add(Sprite);
+			}
+		}
 		void IConsumer<Phase_ModelComplete>.Consume(Phase_ModelComplete message) {
 			ValueAxis = message.AxisExtents.SingleOrDefault(xx => xx.AxisName == ValueAxisName);
 			if (ValueAxis == null) return;
@@ -149,40 +169,24 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (double.IsNaN(Value)) return;
 			if (Container == null) return;
 			if (ElementFactory == null) return;
-			var model = MatrixSupport.ModelFor(0, 1, ValueAxis.Minimum, ValueAxis.Maximum);
+			var cat = new Axis_Extents("$category01", 0, 1, FlipSide(ValueAxis.AxisSide), AxisType.Category, false);
+			var model = MatrixSupport.ModelFor(cat.Minimum, cat.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
 			// C_1(ndc), C_2(M)
 			// Offset(0, Value)
 			var c1ori = MappingSupport.OppositeOf(ValueAxis.Orientation);
 			var offset = MappingSupport.ToVector(0, c1ori, Value, ValueAxis.Orientation);
-			var fakec = new Axis_Extents(null, 0, 1, FlipSide(ValueAxis.AxisSide), AxisType.Category, false);
 			if (Sprite == null) {
-				// (0,0)...(1,0)
-				var v1 = MappingSupport.ToVector(0, c1ori, 0, ValueAxis.Orientation);
-				var v2 = MappingSupport.ToVector(1, c1ori, 0, ValueAxis.Orientation);
-				var gctx = new LineGeometryContext(Container.Compositor, v1, v2);
-				var sprite = ElementFactory.CreateElement(gctx);
-				sprite.TransformMatrix = model;
-				sprite.Offset = offset;
-				Sprite = sprite;
-				if (AnimationFactory != null) {
-					var ectx = new ValueContext(Container.Compositor, Value, fakec, ValueAxis, ItemTransition.None);
-					if(!AnimationFactory.StartAnimation(AnimationKeys.ENTER, ectx, Container.Shapes, Sprite)) {
-						Container.Shapes.Add(Sprite);
-					}
-				}
-				else {
-					Container.Shapes.Add(Sprite);
-				}
+				EnsureSprite(cat, c1ori, model, offset);
 			}
 			else {
 				if (AnimationFactory != null) {
-					// animate offset change
+					if (model != Model) {
+						AnimationFactory.Transform(null, model);
+					}
 					if (offset != Sprite.Offset) {
-						var octx = new ValueContext(Container.Compositor, Value, fakec, ValueAxis, ItemTransition.None);
-						if(!AnimationFactory.StartAnimation(AnimationKeys.OFFSET, octx, Sprite)) {
-							if (offset != Sprite.Offset) {
-								Sprite.Offset = offset;
-							}
+						var octx = new ValueContext(Container.Compositor, Value, cat, ValueAxis, ItemTransition.None);
+						if(!AnimationFactory.Offset(octx, Sprite)) {
+							Sprite.Offset = offset;
 						}
 					}
 				}
