@@ -1,6 +1,6 @@
 ﻿{
 	"TraceSwitches": {
-		"AnimationFactory_Default": "Verbose",
+		"AnimationFactory": "Verbose",
 		"AxisCommon": "Error",
 		"CandlestickSeries": "Error",
 		"CategoryAxis": "Error",
