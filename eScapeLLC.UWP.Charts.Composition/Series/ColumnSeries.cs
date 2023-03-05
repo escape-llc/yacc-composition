@@ -91,7 +91,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (AnimationFactory != null) {
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y}");
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
-				AnimationFactory.StartAnimation(AnimationKeys.OFFSET, ctx, item.Element);
+				AnimationFactory.Offset(ctx, item.Element);
 			}
 			else {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
@@ -122,8 +122,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		void IOperationController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			_trace.Verbose($"{Name}.Entering index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
-			bool elementSelected2 = IsSelected(state);
-			if (elementSelected2) {
+			bool elementSelected = IsSelected(state);
+			if (elementSelected) {
 				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
 				Entering(state, it);
 				UpdateStyle(state);
@@ -180,7 +180,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (item == null || item.Element == null) return;
 			if (AnimationFactory != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.StartAnimation(AnimationKeys.ENTER, ctx, Container.Shapes, item.Element);
+				AnimationFactory.Enter(ctx, item.Element, Container.Shapes);
 			}
 			else {
 				if (it == ItemTransition.Head) {
@@ -199,7 +199,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (item == null || item.Element == null) return;
 			if (AnimationFactory != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.StartAnimation(AnimationKeys.EXIT, ctx, Container.Shapes, item.Element, co => {
+				AnimationFactory.Exit(ctx, item.Element, Container.Shapes, co => {
 					item.ResetElement();
 				});
 			}
@@ -215,42 +215,41 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region data operation extensions
-		protected override void UpdateModelTransform() {
-			Matrix3x2 model = CategoryAxis.Orientation == AxisOrientation.Horizontal
-			? MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum)
-			: MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
-			if (model == Model) return;
-			Model = model;
-			var ctx = new DefaultContext(Container.Compositor, CategoryAxis, ValueAxis);
-			foreach (ColumnSeries_ItemState item in ItemState.Cast<ColumnSeries_ItemState>()) {
-				// apply new model transform
-				if (item != null && item.Element != null) {
-					if (AnimationFactory != null) {
-						AnimationFactory.StartAnimation(AnimationKeys.TRANSFORM, ctx, item.Element, cc => {
-							// doesn't animate but updates matrix
-							cc.Properties.InsertVector3("Component1", new Vector3(Model.M11, Model.M21, Model.M31));
-							cc.Properties.InsertVector3("Component2", new Vector3(Model.M12, Model.M22, Model.M32));
-						});
-					}
-					else {
-						item.Element.TransformMatrix = Model;
-					}
-				}
-			}
-		}
 		protected override void ComponentExtents() {
 			if (Pending == null) return;
 			_trace.Verbose($"{Name} component-extents");
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			int index = 0;
-			foreach(var op in Pending.Where(xx => xx is ItemsWithOffset<ColumnSeries_ItemState>)) {
-				foreach(var item in (op as ItemsWithOffset<ColumnSeries_ItemState>).Items) {
+			foreach (var op in Pending.Where(xx => xx is ItemsWithOffset<ColumnSeries_ItemState>)) {
+				foreach (var item in (op as ItemsWithOffset<ColumnSeries_ItemState>).Items) {
 					UpdateLimits(index, item.DataValue, 0);
 					index++;
 				}
 			}
 			UpdateLimits(index);
+		}
+		bool did = false;
+		protected override void UpdateModelTransform() {
+			Matrix3x2 model = CategoryAxis.Orientation == AxisOrientation.Horizontal
+			? MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum)
+			: MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
+			if (model == Model) return;
+			if(!did) {
+				AnimationFactory?.InitTransform(model);
+				did = true;
+			}
+			Model = model;
+			if(AnimationFactory != null) {
+				var ctx = new DefaultContext(Container.Compositor, CategoryAxis, ValueAxis);
+				AnimationFactory.Transform(ctx, Model);
+			}
+			else {
+				foreach (ColumnSeries_ItemState item in ItemState.Cast<ColumnSeries_ItemState>().Where(xx => xx != null && xx.Element != null)) {
+					// apply new model transform
+					item.Element.TransformMatrix = Model;
+				}
+			}
 		}
 		protected override void ModelComplete() {
 			if (Pending == null) return;
