@@ -12,6 +12,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public abstract class DataSource_Operation : CommandPort_Operation {
 		public string Name { get; internal set; }
 		protected DataSource_Operation() { }
+		public abstract void ApplyTo(IList list);
 	}
 	#endregion
 	#region DataSource_Typed
@@ -44,7 +45,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// <summary>
 	/// Exit all elements at head.
 	/// </summary>
-	public sealed class DataSource_Clear : DataSource_Operation { }
+	public sealed class DataSource_Clear : DataSource_Operation {
+		public override void ApplyTo(IList list) {
+			list.Clear();
+		}
+	}
 	#endregion
 	#region DataSource_Reset
 	/// <summary>
@@ -56,6 +61,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ItemStateOperation<S> exit = new ItemsExiting<S>(ItemTransition.Head, items.Select(xx => xx as S).ToList());
 			ItemStateOperation<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList());
 			return new ItemStateOperation<S>[] { exit, enter };
+		}
+		public override void ApplyTo(IList list) {
+			list.Clear();
+			foreach (var ox in Items) list.Add(ox);
 		}
 	}
 	#endregion
@@ -72,6 +81,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ItemsEntering<S> enter = new ItemsEntering<S>(ItemTransition.Tail, entering(Items).ToList(), live.Items.Count);
 			return new ItemStateOperation<S>[] { exit, live, enter };
 		}
+		public override void ApplyTo(IList list) {
+			for (var ix = 0; ix < Items.Count; ix++) { list.RemoveAt(0); }
+			foreach (var ox in Items) list.Add(ox);
+		}
 	}
 	#endregion
 	#region DataSource_Add
@@ -86,6 +99,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var itmp = entering(Items);
 			ItemStateOperation<S> enter = new ItemsEntering<S>(AtHead ? ItemTransition.Head : ItemTransition.Tail, itmp.ToList(), AtHead ? 0 : live.Items.Count);
 			return AtHead ? new[] { enter, live } : new[] { live, enter };
+		}
+		public override void ApplyTo(IList list) {
+			if (AtHead) {
+				for (var ix = 0; ix < Items.Count; ix++) list.Insert(ix, Items[ix]);
+			}
+			else {
+				foreach (var ox in Items) list.Add(ox);
+			}
 		}
 	}
 	#endregion
@@ -113,6 +134,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				return new[] { exit, live };
 			}
 		}
+		public override void ApplyTo(IList list) {
+			for (var ix = 0; ix < Count; ix++) list.RemoveAt(AtHead ? 0 : list.Count - 1);
+		}
 	}
 	#endregion
 	#region DataSource
@@ -130,6 +154,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public static readonly DependencyProperty CommandPortProperty = DependencyProperty.Register(
 			nameof(CommandPort), typeof(DataSource_Operation), typeof(DataSource), new PropertyMetadata(null, new PropertyChangedCallback(CommandPortPropertyChanged))
 		);
+		public static readonly DependencyProperty ItemSinkProperty = DependencyProperty.Register(
+			nameof(ItemSink), typeof(IList), typeof(DataSource), new PropertyMetadata(null, new PropertyChangedCallback(ItemSinkPropertyChanged))
+		);
 		/// <summary>
 		/// Trigger a refresh when the value changes.
 		/// </summary>
@@ -144,12 +171,25 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 			}
 		}
+		private static void ItemSinkPropertyChanged(DependencyObject dobj, DependencyPropertyChangedEventArgs dpcea) {
+			DataSource ds = dobj as DataSource;
+			_trace.Verbose($"ItemSink new:{dpcea.NewValue} old:{dpcea.OldValue}");
+			if (dpcea.NewValue is IList bx) {
+				if (dpcea.NewValue != dpcea.OldValue) {
+				}
+			}
+		}
 		#endregion
 		#region properties
 		/// <summary>
 		/// An "external source" (like a View Model) SHOULD attach a data binding to this property to trigger data source operations.
 		/// </summary>
-		public DataSource_Operation CommandPort { get { return (DataSource_Operation)GetValue(CommandPortProperty); } set { SetValue(CommandPortProperty, value); } }
+		public DataSource_Operation CommandPort { get => (DataSource_Operation)GetValue(CommandPortProperty); set { SetValue(CommandPortProperty, value); } }
+		/// <summary>
+		/// MAY bind an instance of <see cref="IList"/> to receive item updates back from the <see cref="DataSource_Operation"/>.
+		/// Using this prevents you from performing "double-entry" if maintaining an "image" of the chart's data items.
+		/// </summary>
+		public IList ItemSink { get => (IList)GetValue(ItemSinkProperty); set { SetValue(ItemSinkProperty, value); } }
 		/// <summary>
 		/// Used to forward unsolicited messages.
 		/// </summary>
@@ -210,7 +250,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="dso">Data source operation.</param>
 		void Command(DataSource_Operation dso) {
 			dso.Name = Name;
-			Forward?.Forward(new DataSource_Request(Name, dso));
+			Forward?.Forward(new DataSource_Request(Name, dso, op => { var sink = ItemSink; if(sink != null) op.ApplyTo(sink); }));
 		}
 		#endregion
 		#region handlers
