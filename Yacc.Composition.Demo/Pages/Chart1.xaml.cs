@@ -3,6 +3,7 @@ using eScape.Core.Page;
 using eScapeLLC.UWP.Charts.Composition;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.UI.Xaml;
@@ -18,6 +19,8 @@ namespace Yacc.Composition.Demo.Pages {
 		public DataSource_Operation CommandPort2 { get; set; }
 		public double Value1Average { get; set; }
 		public double Value2Average { get; set; }
+		public ObservableCollection<Observation> Observations1 { get; set; } = new ObservableCollection<Observation>();
+		public ObservableCollection<Observation> Observations2 { get; set; } = new ObservableCollection<Observation>();
 		public Chart1() {
 			this.InitializeComponent();
 			InitializeDataset();

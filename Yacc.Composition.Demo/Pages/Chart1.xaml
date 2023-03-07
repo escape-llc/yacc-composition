@@ -158,12 +158,12 @@
 				<AppBarButton x:Name="add_and_remove_head" Content="&#x21d0;&#x2395;&#x21d0;" Label="Scroll" Click="Add_and_remove_head_Click"/>
 			</CommandBar.PrimaryCommands>
 		</CommandBar>
-		<yacc:Chart HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError"
+		<yacc:Chart Name="chart" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError"
 			RelativePanel.Below="toolbar" RelativePanel.AlignBottomWithPanel="True"
-			RelativePanel.AlignLeftWithPanel="True" RelativePanel.AlignRightWithPanel="True">
+			RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="list">
 			<yacc:Chart.DataSources>
-				<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1, Mode=OneWay}" />
-				<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2, Mode=OneWay}" />
+				<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1, Mode=OneWay}" ItemSink="{x:Bind Observations1, Mode=OneWay}" />
+				<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2, Mode=OneWay}" ItemSink="{x:Bind Observations2, Mode=OneWay}"/>
 			</yacc:Chart.DataSources>
 			<yacc:Chart.Components>
 				<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}" AnimationFactory="{StaticResource Animate}"
@@ -176,7 +176,7 @@
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3"
 					BarWidth=".24" BarOffset=".5" />
 				<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}" AnimationFactory="{StaticResource Animate}"
-					CategoryAxisName="XAxis2" ValueAxisName="YAxis" ValueMemberName="Value1"
+					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
 					BarWidth=".24" BarOffset=".75" />
 				<!--
 				<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
@@ -200,5 +200,33 @@
 				<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
 			</yacc:Chart.Components>
 		</yacc:Chart>
+		<ListView Name="list" ItemsSource="{x:Bind Observations1, Mode=OneWay}" Width="250" MinWidth="200" MaxWidth="300"
+			BorderThickness="2,0,0,0" BorderBrush="DarkGray"
+			VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch"
+			RelativePanel.Below="toolbar" RelativePanel.AlignBottomWithPanel="True"
+			RelativePanel.AlignRightWithPanel="True">
+			<ListView.ItemContainerStyle>
+				<Style TargetType="ListViewItem">
+					<Setter Property="HorizontalAlignment" Value="Stretch"/>
+					<Setter Property="VerticalAlignment" Value="Stretch"/>
+				</Style>
+			</ListView.ItemContainerStyle>
+			<ListView.ItemTemplate>
+				<DataTemplate>
+					<Grid Margin="0" Padding="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto"/>
+							<ColumnDefinition MinWidth="40" Width="Auto"/>
+							<ColumnDefinition MinWidth="40" Width="Auto"/>
+							<ColumnDefinition MinWidth="40" Width="Auto"/>
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="{Binding Label}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Left" />
+						<TextBlock Grid.Column="1" Text="{Binding Value1Formatted}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Right" />
+						<TextBlock Grid.Column="2" Text="{Binding Value2Formatted}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Right" />
+						<TextBlock Grid.Column="3" Text="{Binding Value3Formatted}" HorizontalAlignment="Stretch" HorizontalTextAlignment="Right" />
+					</Grid>
+				</DataTemplate>
+			</ListView.ItemTemplate>
+		</ListView>
 	</RelativePanel>
 </page:ViewModelPage>
