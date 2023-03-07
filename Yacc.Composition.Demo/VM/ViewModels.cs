@@ -55,11 +55,15 @@ namespace Yacc.Demo.VM {
 	#endregion
 	#region ObservationsVM
 	public class Observation {
+		public static string FormatString = "{0:F2}";
 		public int Index { get; set; }
 		public string Label => $"Observation[{Index}]";
 		public double Value1 { get; set; }
+		public string Value1Formatted => string.Format(FormatString, Value1);
 		public double Value2 { get; set; }
+		public string Value2Formatted => string.Format(FormatString, Value2);
 		public double Value3 { get; set; }
+		public string Value3Formatted => string.Format(FormatString, Value3);
 		public Observation(int index, double value1, double value2, double value3) {
 			Index = index;
 			Value1 = value1;
