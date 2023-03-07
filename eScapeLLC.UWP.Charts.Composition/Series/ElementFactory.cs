@@ -220,21 +220,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		CompositionShape CreateElement(IElementFactoryContext iefc);
 	}
 	#endregion
-	#region IAnimationFactory
-	/// <summary>
-	/// Ability to animate series elements.
-	/// </summary>
-	public interface IAnimationFactory {
-		/// <summary>
-		/// Prepare resources.
-		/// </summary>
-		/// <param name="cc">Use to acquire resources.</param>
-		void Prepare(Compositor cc);
-		/// <summary>
-		/// Release resources.
-		/// </summary>
-		/// <param name="cc"></param>
-		void Unprepare(Compositor cc);
+	#region IAnimationController
+	public interface IAnimationController : IDisposable {
 		/// <summary>
 		/// Initialize transform components before first use of <see cref="Transform(IElementFactoryContext, Matrix3x2)"/>.
 		/// This prevents an initial animation from Identity Matrix to the first Model.
@@ -279,6 +266,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
 		bool Offset(IElementFactoryContext iefc, CompositionObject co, Action<CompositionObject> cb = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
+	}
+	#endregion
+	#region IAnimationFactory
+	/// <summary>
+	/// Ability to animate series elements.
+	/// </summary>
+	public interface IAnimationFactory {
+		/// <summary>
+		/// Obtain a controller.
+		/// </summary>
+		/// <param name="cc">Use to create objects.</param>
+		/// <returns>New instance.</returns>
+		IAnimationController CreateAnimationController(Compositor cc);
 	}
 	#endregion
 }
