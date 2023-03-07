@@ -197,6 +197,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>Name or type.</returns>
 		public string NameOrType() { return string.IsNullOrEmpty(Name) ? GetType().Name : Name; }
 		#endregion
+		#region protected
+		/// <summary>
+		/// Locate required components and generate errors if they are not found.
+		/// </summary>
+		/// <param name="iccc">Use to locate components and report errors.</param>
+		protected void EnsureAxis(IChartComponentContext iccc, string name) {
+			IChartErrorInfo icei = iccc as IChartErrorInfo;
+			if (!string.IsNullOrEmpty(name)) {
+				if (!(iccc.Find(name) is IChartAxis axis)) {
+					icei?.Report(new ChartValidationResult(NameOrType(), $"Value axis '{name}' was not found", new[] { nameof(name) }));
+				}
+				else {
+					if (axis.Type != AxisType.Value) {
+						icei?.Report(new ChartValidationResult(NameOrType(), $"Value axis '{name}' Type {axis.Type} is not Value", new[] { nameof(name) }));
+					}
+				}
+			}
+			else {
+				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(name)}' was not set", new[] { nameof(name) }));
+			}
+		}
+		#endregion
 		#region handlers
 		void IConsumer<DataContextChangedEventArgs>.Consume(DataContextChangedEventArgs args) {
 			if (DataContext != args.NewValue) {

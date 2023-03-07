@@ -84,14 +84,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Holds all the shapes for this series.
 		/// </summary>
 		protected CompositionContainerShape Container { get; set; }
+		protected IAnimationController Animate { get; set; }
 		#endregion
 		#region helpers
 		void UpdateOffset(ColumnSeries_ItemState item) {
 			if (item.Element == null) return;
-			if (AnimationFactory != null) {
+			if (Animate != null) {
 				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y}");
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
-				AnimationFactory.Offset(ctx, item.Element);
+				Animate.Offset(ctx, item.Element);
 			}
 			else {
 				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
@@ -178,9 +179,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="item"></param>
 		protected virtual void Entering(ColumnSeries_ItemState item, ItemTransition it) {
 			if (item == null || item.Element == null) return;
-			if (AnimationFactory != null) {
+			if (Animate != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.Enter(ctx, item.Element, Container.Shapes);
+				Animate.Enter(ctx, item.Element, Container.Shapes);
 			}
 			else {
 				if (it == ItemTransition.Head) {
@@ -197,9 +198,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="item"></param>
 		protected virtual void Exiting(ColumnSeries_ItemState item, ItemTransition it) {
 			if (item == null || item.Element == null) return;
-			if (AnimationFactory != null) {
+			if (Animate != null) {
 				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				AnimationFactory.Exit(ctx, item.Element, Container.Shapes, co => {
+				Animate.Exit(ctx, item.Element, Container.Shapes, co => {
 					item.ResetElement();
 				});
 			}
@@ -236,13 +237,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			: MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			if (model == Model) return;
 			if(!did) {
-				AnimationFactory?.InitTransform(model);
+				Animate?.InitTransform(model);
 				did = true;
 			}
 			Model = model;
 			if(AnimationFactory != null) {
 				var ctx = new DefaultContext(Container.Compositor, CategoryAxis, ValueAxis);
-				AnimationFactory.Transform(ctx, Model);
+				Animate.Transform(ctx, Model);
 			}
 			else {
 				foreach (ColumnSeries_ItemState item in ItemState.Cast<ColumnSeries_ItemState>().Where(xx => xx != null && xx.Element != null)) {
@@ -292,12 +293,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Container = compositor.CreateContainerShape();
 			Container.Comment = $"container_{Name}";
 			Layer = icelc.CreateLayer(Container);
-			AnimationFactory?.Prepare(compositor);
+			Animate = AnimationFactory?.CreateAnimationController(compositor);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName} {ValueAxis} c:{CategoryAxisName} {CategoryAxis} d:{DataSourceName}");
 		}
 		public void Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
-			AnimationFactory?.Unprepare(Window.Current.Compositor);
+			Animate?.Dispose();
+			Animate = null;
 			Container = null;
 			icelc.DeleteLayer(Layer);
 			Layer = null;

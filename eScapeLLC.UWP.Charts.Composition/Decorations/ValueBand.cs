@@ -1,42 +1,20 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
-using eScapeLLC.UWP.Charts.Composition.Factory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using Windows.Foundation;
+using System.Text;
+using System.Threading.Tasks;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
-namespace eScapeLLC.UWP.Charts.Composition {
-	/// <summary>
-	/// Tracks a value against a Value Axis via a line segment spanning the alternate axis e.g. Category Axis.
-	/// </summary>
-	public class ValueRule : ChartComponent, IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
+namespace eScapeLLC.UWP.Charts.Composition.Decorations {
+	public class ValueBand : ChartComponent, IRequireEnterLeave, IProvideSeriesItemValues, /*IProvideSeriesItemLayout,*/
 		IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
-		static readonly LogTools.Flag _trace = LogTools.Add("ValueRule", LogTools.Level.Error);
-		#region inner
-		class Value_LayoutSession : LayoutSession {
-			readonly AxisOrientation c1axis;
-			readonly AxisOrientation c2axis;
-			internal Value_LayoutSession(Matrix3x2 model, Matrix3x2 projection, AxisOrientation c1axis, AxisOrientation c2axis) : base(model, projection) {
-				this.c1axis = c1axis;
-				this.c2axis = c2axis;
-			}
-			public override (Vector2 center, Point direction)? Layout(ISeriesItem isi, Point offset) {
-				if (isi is ItemStateC1 sis) {
-					var invert = sis.Component1 < 0 ? -1 : 1;
-					var center = MappingSupport.ToVector(offset.X, c1axis, sis.Component1 + offset.Y * invert, c2axis);
-					var (dx, dy) = MappingSupport.MapComponents(1, c1axis, sis.Component1 < 0 ? 1 : -1, c2axis);
-					return (Project(center), new Point(dx, dy));
-				}
-				return null;
-			}
-		}
-		#endregion
+		static readonly LogTools.Flag _trace = LogTools.Add("ValueBand", LogTools.Level.Error);
 		#region properties
 		/// <summary>
 		/// Component name of value axis.
@@ -46,7 +24,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Binding path to the value axis value.
 		/// </summary>
-		public double Value { get { return (double)GetValue(ValueProperty); } set { SetValue(ValueProperty, value); } }
+		public double Value1 { get { return (double)GetValue(Value1Property); } set { SetValue(Value1Property, value); } }
+		public double Value2 { get { return (double)GetValue(Value2Property); } set { SetValue(Value2Property, value); } }
 		/// <summary>
 		/// How to create the elements for this series.
 		/// </summary>
@@ -60,8 +39,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		IEnumerable<ISeriesItem> IProvideSeriesItemValues.SeriesItemValues {
 			get {
-				var sivc = new ItemStateC1(0, Value);
-				return new[] { sivc };
+				return new[] { new ItemStateC1(0, Value1), new ItemStateC1(1, Value2) };
 			}
 		}
 		/// <summary>
@@ -77,13 +55,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		protected CompositionContainerShape Container { get; set; }
 		protected IAnimationController Animate { get; set; }
+		protected CompositionShape Line1 { get; set; }
+		protected CompositionShape Line2 { get; set; }
+		protected Matrix3x2 Model { get; set; }
 		#endregion
 		#region DPs
 		/// <summary>
 		/// Value DP.
 		/// </summary>
-		public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
-			nameof(Value), typeof(double), typeof(ValueRule), new PropertyMetadata(null, new PropertyChangedCallback(ComponentPropertyChanged))
+		public static readonly DependencyProperty Value1Property = DependencyProperty.Register(
+			nameof(Value1), typeof(double), typeof(ValueBand), new PropertyMetadata(null, new PropertyChangedCallback(ComponentPropertyChanged))
+		);
+		public static readonly DependencyProperty Value2Property = DependencyProperty.Register(
+			nameof(Value2), typeof(double), typeof(ValueBand), new PropertyMetadata(null, new PropertyChangedCallback(ComponentPropertyChanged))
 		);
 		/// <summary>
 		/// Generic DP property change handler.
@@ -92,13 +76,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="d"></param>
 		/// <param name="dpcea"></param>
 		private static void ComponentPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs dpcea) {
-			ValueRule hr = d as ValueRule;
+			ValueBand hr = d as ValueBand;
 			if (dpcea.OldValue != dpcea.NewValue) {
 				if (hr.ValueAxis == null) return;
 				var aus = AxisUpdateState.None;
 				if (hr.ValueAxis != null) {
-					if (hr.Value > hr.ValueAxis.Maximum || hr.Value < hr.ValueAxis.Minimum) {
-						_trace.Verbose($"{hr.Name} axis-update-required");
+					if (dpcea.Property == Value1Property && (hr.Value1 > hr.ValueAxis.Maximum || hr.Value1 < hr.ValueAxis.Minimum)) {
+						_trace.Verbose($"{hr.Name} axis-update-required.value1");
+						aus = AxisUpdateState.Value;
+					}
+					else if (dpcea.Property == Value2Property && (hr.Value2 > hr.ValueAxis.Maximum || hr.Value2 < hr.ValueAxis.Minimum)) {
+						_trace.Verbose($"{hr.Name} axis-update-required.value2");
 						aus = AxisUpdateState.Value;
 					}
 				}
@@ -110,72 +98,87 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		#endregion
-		#region helpers
-		#endregion
 		#region handlers
 		void IConsumer<Phase_ComponentExtents>.Consume(Phase_ComponentExtents message) {
-			message.Register(new Component_Extents(Name, null, ValueAxisName, Value, Value));
+			message.Register(new Component_Extents(Name, null, ValueAxisName, Value1, Value2));
 		}
-		protected CompositionShape Sprite { get; set; }
-		protected Matrix3x2 Model { get; set; }
-		internal static Side FlipSide(Side vx) {
-			if (vx == Side.Left || vx == Side.Right) return Side.Bottom;
-			else if (vx == Side.Top || vx == Side.Bottom) return Side.Left;
-			throw new ArgumentException(nameof(vx));
-		}
-		void EnsureSprite(Axis_Extents cat, AxisOrientation c1ori, Matrix3x2 model, Vector2 offset) {
+		void EnsureSprite(Axis_Extents cat, AxisOrientation c1ori, Matrix3x2 model, Vector2 offset1, Vector2 offset2) {
 			// (0,0)...(1,0)
 			var v1 = MappingSupport.ToVector(0, c1ori, 0, ValueAxis.Orientation);
 			var v2 = MappingSupport.ToVector(1, c1ori, 0, ValueAxis.Orientation);
 			var gctx = new LineGeometryContext(Container.Compositor, v1, v2);
 			var sprite = ElementFactory.CreateElement(gctx);
 			sprite.TransformMatrix = model;
-			sprite.Offset = offset;
-			Sprite = sprite;
+			sprite.Offset = offset1;
+			Line1 = sprite;
+			sprite = ElementFactory.CreateElement(gctx);
+			sprite.TransformMatrix = model;
+			sprite.Offset = offset1;
+			Line2 = sprite;
+			// TODO create the area sprite
+			// Expressions:
+			// area.Offset = Vector2(0, Math.Min(Line1.Offset.Y, Line2.Offset.Y))
+			// area.Size = Vector2(1, Math.Abs(Line2.Offset.Y - Line2.Offset.Y))
 			if (Animate != null) {
-				var ectx = new ValueContext(Container.Compositor, Value, cat, ValueAxis, ItemTransition.None);
-				if (!Animate.Enter(ectx, Sprite, Container.Shapes)) {
-					Container.Shapes.Add(Sprite);
+				var ectx = new ValueContext(Container.Compositor, Value1, cat, ValueAxis, ItemTransition.None);
+				if (!Animate.Enter(ectx, Line1, Container.Shapes)) {
+					Container.Shapes.Add(Line1);
+				}
+				ectx = new ValueContext(Container.Compositor, Value2, cat, ValueAxis, ItemTransition.None);
+				if (!Animate.Enter(ectx, Line2, Container.Shapes)) {
+					Container.Shapes.Add(Line2);
 				}
 			}
 			else {
-				Container.Shapes.Add(Sprite);
+				Container.Shapes.Add(Line1);
+				Container.Shapes.Add(Line2);
 			}
 		}
 		void IConsumer<Phase_ModelComplete>.Consume(Phase_ModelComplete message) {
 			ValueAxis = message.AxisExtents.SingleOrDefault(xx => xx.AxisName == ValueAxisName);
 			if (ValueAxis == null) return;
 			if (double.IsNaN(ValueAxis.Minimum) || double.IsNaN(ValueAxis.Maximum)) return;
-			if (double.IsNaN(Value)) return;
+			if (double.IsNaN(Value1) || double.IsNaN(Value2)) return;
 			if (Container == null) return;
 			if (ElementFactory == null) return;
-			var cat = new Axis_Extents("$category01", 0, 1, FlipSide(ValueAxis.AxisSide), AxisType.Category, false);
+			var cat = new Axis_Extents("$category01", 0, 1, ValueRule.FlipSide(ValueAxis.AxisSide), AxisType.Category, false);
 			var model = MatrixSupport.ModelFor(cat.Minimum, cat.Maximum, ValueAxis.Minimum, ValueAxis.Maximum);
-			// C_1(ndc), C_2(M)
-			// Offset(0, Value)
+			// C_1(ndc), C_2(M), C_3(M)
+			// Offset(0, Value1), Offset(0, Value2)
 			var c1ori = MappingSupport.OppositeOf(ValueAxis.Orientation);
-			var offset = MappingSupport.ToVector(0, c1ori, Value, ValueAxis.Orientation);
-			if (Sprite == null) {
-				EnsureSprite(cat, c1ori, model, offset);
+			var offset1 = MappingSupport.ToVector(0, c1ori, Value1, ValueAxis.Orientation);
+			var offset2 = MappingSupport.ToVector(0, c1ori, Value2, ValueAxis.Orientation);
+			if (Line1 == null) {
+				EnsureSprite(cat, c1ori, model, offset1, offset2);
 			}
 			else {
 				if (Animate != null) {
 					if (model != Model) {
 						Animate.Transform(null, model);
 					}
-					if (offset != Sprite.Offset) {
-						var octx = new ValueContext(Container.Compositor, Value, cat, ValueAxis, ItemTransition.None);
-						if(!Animate.Offset(octx, Sprite)) {
-							Sprite.Offset = offset;
+					if (offset1 != Line1.Offset) {
+						var octx = new ValueContext(Container.Compositor, Value1, cat, ValueAxis, ItemTransition.None);
+						if (!Animate.Offset(octx, Line1)) {
+							Line1.Offset = offset1;
+						}
+					}
+					if(offset2 != Line2.Offset) {
+						var octx = new ValueContext(Container.Compositor, Value2, cat, ValueAxis, ItemTransition.None);
+						if (!Animate.Offset(octx, Line2)) {
+							Line2.Offset = offset2;
 						}
 					}
 				}
 				else {
 					if (model != Model) {
-						Sprite.TransformMatrix = model;
+						Line1.TransformMatrix = model;
+						Line2.TransformMatrix = model;
 					}
-					if (offset != Sprite.Offset) {
-						Sprite.Offset = offset;
+					if (offset1 != Line1.Offset) {
+						Line1.Offset = offset1;
+					}
+					if (offset2 != Line2.Offset) {
+						Line2.Offset = offset2;
 					}
 				}
 			}
@@ -214,15 +217,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Container = null;
 			icelc.DeleteLayer(Layer);
 			Layer = null;
-		}
-		#endregion
-		#region IProvideSeriesItemLayout
-		public ILayoutSession Create(Rect area) {
-			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal ? ValueAxis.Reversed : false;
-			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical ? ValueAxis.Reversed : false;
-			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
-			var proj = MatrixSupport.ProjectForQuadrant(q, area);
-			return new Value_LayoutSession(Model, proj, MappingSupport.OppositeOf(ValueAxis.Orientation), ValueAxis.Orientation);
 		}
 		#endregion
 	}

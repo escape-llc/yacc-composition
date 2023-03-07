@@ -389,7 +389,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Bus.Consume(new Phase_LayoutComplete(ls));
 			// Phase III: operation(s)
 			foreach (var op in cpos) {
-				_trace.Verbose($"sending dso {op}");
+				_trace.Verbose($"sending op {op}");
 				if (op is DataSource_Operation ds) {
 					Bus.Consume(new Phase_DataSourceOperation(ds.Name, ls, Surface, Components, DataContext, ds));
 				}
@@ -432,11 +432,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IForwardCommandPort<>
-		void ForwardCommon(List<CommandPort_Operation> ops) {
+		void ForwardCommon<O>(CommandPort_Request<O> req) where O: CommandPort_Operation {
 			var did = Queue.TryEnqueue(() => {
 				if (Surface == null) return;
 				try {
-					RenderComponents(CurrentLayout, ops);
+					RenderComponents(CurrentLayout, new List<CommandPort_Operation>() { req.Operation });
+					req.Complete();
 				}
 				catch (Exception ex) {
 					_trace.Error($"{Name} ForwardCommon.unhandled: {ex}");
@@ -448,11 +449,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		void IForwardCommandPort<DataSource_Request, DataSource_Operation>.Forward(DataSource_Request dsrr) {
 			_trace.Verbose($"forward-ds '{dsrr.Name}' {dsrr.Operation}");
-			ForwardCommon(new List<CommandPort_Operation>() { dsrr.Operation });
+			ForwardCommon(dsrr);
 		}
 		void IForwardCommandPort<Component_Request, Component_Operation>.Forward(Component_Request crr) {
 			_trace.Verbose($"forward-cc '{crr.Name}' {crr.Operation}");
-			ForwardCommon(new List<CommandPort_Operation>() { crr.Operation });
+			ForwardCommon(crr);
 		}
 		#endregion
 	}
