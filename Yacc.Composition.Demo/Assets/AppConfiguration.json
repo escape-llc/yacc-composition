@@ -1,6 +1,6 @@
 ﻿{
 	"TraceSwitches": {
-		"AnimationFactory": "Verbose",
+		"AnimationController": "Verbose",
 		"AxisCommon": "Error",
 		"CandlestickSeries": "Error",
 		"CategoryAxis": "Error",
@@ -9,7 +9,6 @@
 		"CategoryValueSeries": "Verbose",
 		"DataSource": "Error",
 		"HeatmapSeries": "Error",
-		"HorizontalBand": "Error",
 		"ImageSourceMarkerSeries": "Error",
 		"LineSeries": "Error",
 		"MarkerSeries": "Error",
@@ -17,6 +16,7 @@
 		"StackedColumnSeries": "Error",
 		"ValueAxis": "Error",
 		"ValueAxisGrid": "Error",
+		"ValueBand": "Verbose",
 		"ValueLabels": "Error",
 		"ValueRule": "Verbose"
 	}
