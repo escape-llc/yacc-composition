@@ -1,4 +1,5 @@
 ﻿using eScape.Host;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -174,6 +175,10 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <typeparam name="O">CommandPort operation type.</typeparam>
 	public abstract class CommandPort_Request<O> where O: CommandPort_Operation {
 		/// <summary>
+		/// Optional callback for when operation completes in the pipeline.
+		/// </summary>
+		readonly Action<O> Callback;
+		/// <summary>
 		/// Name of initiator.
 		/// </summary>
 		public readonly string Name;
@@ -181,9 +186,18 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 		/// Operation to perform.
 		/// </summary>
 		public readonly O Operation;
-		protected CommandPort_Request(string name, O op) {
+		protected CommandPort_Request(string name, O op, Action<O> callback = null) {
+			if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+			if(op == null) throw new ArgumentNullException(nameof(op));
 			Name = name;
 			Operation = op;
+			Callback = callback;
+		}
+		/// <summary>
+		/// Invoke the callback.
+		/// </summary>
+		public void Complete() {
+			Callback?.Invoke(Operation);
 		}
 	}
 	#endregion
@@ -192,7 +206,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <see cref="ChartComponent"/> is requesting an operation via command port.
 	/// </summary>
 	public sealed class Component_Request : CommandPort_Request<Component_Operation> {
-		public Component_Request(Component_Operation op) :base(op.Component.Name, op) { }
+		public Component_Request(Component_Operation op, Action<Component_Operation> callback = null) :base(op.Component.Name, op, callback) { }
 	}
 	#endregion
 	#region DataSource_Request
@@ -200,7 +214,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Events {
 	/// <see cref="DataSource"/> is requesting an operation via command port.
 	/// </summary>
 	public sealed class DataSource_Request : CommandPort_Request<DataSource_Operation> {
-		public DataSource_Request(string name, DataSource_Operation cmd) :base(name, cmd) { }
+		public DataSource_Request(string name, DataSource_Operation cmd, Action<DataSource_Operation> callback = null) :base(name, cmd, callback) { }
 	}
 	#endregion
 }
