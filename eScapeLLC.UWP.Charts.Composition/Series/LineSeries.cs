@@ -110,6 +110,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected override LineSeries_ItemState CreateState(int index, object item) {
 			throw new System.NotImplementedException();
 		}
+		protected override CompositionShape CreateShape(Compositor cx, LineSeries_ItemState state) {
+			throw new System.NotImplementedException();
+		}
 		LineSeries_ItemState CreateState(CanvasPathBuilder cpb, int index, bool beginf, object item) {
 			if (ValueBinding.GetDouble(item, out double? value_val)) {
 				// short-circuit if it's NaN or NULL

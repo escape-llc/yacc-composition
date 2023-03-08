@@ -19,7 +19,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape> {
 		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
 		}
-		public void Reindex(int idx) { Index = idx; }
 	}
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
@@ -101,13 +100,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 		}
 		#endregion
-		#region IListController<>
+		#region IOperationController<>
 		void IOperationController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
 			_trace.Verbose($"{Name}.Live index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
 			if (elementSelected && state.Element == null) {
-				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
+				state.SetElement(CreateShape(Container.Compositor, state));
 				Entering(state, it);
 				UpdateStyle(state);
 				UpdateOffset(state);
@@ -125,7 +124,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			state.Reindex(index);
 			bool elementSelected = IsSelected(state);
 			if (elementSelected) {
-				state.SetElement(CreateShape(Container.Compositor, index, state.DataValue));
+				state.SetElement(CreateShape(Container.Compositor, state));
 				Entering(state, it);
 				UpdateStyle(state);
 				UpdateOffset(state);
@@ -160,17 +159,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Create shape with <see cref="ElementFactory"/>.
 		/// </summary>
-		/// <param name="cx"></param>
-		/// <param name="index"></param>
-		/// <param name="value"></param>
-		/// <returns></returns>
-		protected virtual CompositionShape CreateShape(Compositor cx, int index, double value) {
-			var (xx, yy) = MappingSupport.MapComponents(BarWidth, CategoryAxis.Orientation, Math.Abs(value), ValueAxis.Orientation);
-			var ctx = new ColumnElementContext(cx, index, BarOffset, value, xx, yy, CategoryAxis, ValueAxis);
+		/// <param name="cx">Use to create composition objects.</param>
+		/// <param name="state">Item state.</param>
+		/// <returns>New shape.</returns>
+		protected override CompositionShape CreateShape(Compositor cx, ColumnSeries_ItemState state) {
+			var (xx, yy) = MappingSupport.MapComponents(BarWidth, CategoryAxis.Orientation, Math.Abs(state.DataValue), ValueAxis.Orientation);
+			var ctx = new ColumnElementContext(cx, state.Index, BarOffset, state.DataValue, xx, yy, CategoryAxis, ValueAxis);
 			var element = ElementFactory.CreateElement(ctx);
-			element.Comment = $"{Name}[{index}]";
+			element.Comment = $"{Name}[{state.Index}]";
 			element.TransformMatrix = Model;
-			_trace.Verbose($"{Name}[{index}] create-shape val:{value} dim:{xx:F2},{yy:F2}");
+			_trace.Verbose($"{Name}[{state.Index}] create-shape val:{state.DataValue} dim:{xx:F2},{yy:F2}");
 			return element;
 		}
 		/// <summary>
@@ -215,7 +213,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return true;
 		}
 		#endregion
-		#region data operation extensions
+		#region render pipeline event extensions
 		protected override void ComponentExtents() {
 			if (Pending == null) return;
 			_trace.Verbose($"{Name} component-extents");
