@@ -45,17 +45,39 @@ namespace Yacc.Composition.Demo.Pages {
 		bool _band;
 		bool _grid;
 		#endregion
-		Observation Rando() {
+		#region helpers
+		/// <summary>
+		/// Create "random" values.
+		/// </summary>
+		/// <returns>New instance.</returns>
+		private Observation Rando() {
 			var obs = new Observation(indexcounter++, 10 * rnd.NextDouble() - 5, 10 * rnd.NextDouble() - 4, 6 * rnd.NextDouble() + 2);
 			return obs;
 		}
-		void InitializeDataset() {
+		private void InitializeDataset() {
 			var items = new List<Observation>();
 			for(int ix = 0; ix < 5; ix++) {
 				items.Add(Rando());
 			}
 			CommandPort1 = DataSource.Reset(items);
 		}
+		/// <summary>
+		/// Recalculate averages and hit property changed.
+		/// </summary>
+		private void Recalculate() {
+			if (Observations1.Count > 0) {
+				Value1Average = Observations1.Average((ob) => ob.Value1);
+				Value2Average = Observations1.Average((ob) => ob.Value2);
+			}
+			else {
+				Value1Average = 0;
+				Value2Average = 0;
+			}
+			Changed(nameof(Value1Average));
+			Changed(nameof(Value2Average));
+		}
+		#endregion
+		#region evhs
 		private void Chart_ChartError(Chart sender, ChartErrorEventArgs args) {
 			var errors = args.Results.Select(x => x.ErrorMessage).ToArray();
 			var emsg = string.Join("\t", errors);
@@ -71,7 +93,7 @@ namespace Yacc.Composition.Demo.Pages {
 			CommandPort1 = DataSource.Remove(1, true);
 			Changed(nameof(CommandPort1));
 		}
-		private void Add_and_remove_head_Click(object sender, RoutedEventArgs e) {
+		private void Sliding_window_Click(object sender, RoutedEventArgs e) {
 			var items = new List<Observation> { Rando() };
 			CommandPort1 = DataSource.SlidingWindow(items);
 			Changed(nameof(CommandPort1));
@@ -85,21 +107,10 @@ namespace Yacc.Composition.Demo.Pages {
 			CommandPort1 = DataSource.Add(items, true);
 			Changed(nameof(CommandPort1));
 		}
-		void Recalculate() {
-			if (Observations1.Count > 0) {
-				Value1Average = Observations1.Average((ob) => ob.Value1);
-				Value2Average = Observations1.Average((ob) => ob.Value2);
-			}
-			else {
-				Value1Average = 0;
-				Value2Average = 0;
-			}
-			Changed(nameof(Value1Average));
-			Changed(nameof(Value2Average));
-		}
 		private void OnSource1Complete(DataSource sender, OperationCompleteEventArgs e) {
 			_trace.Verbose($"Source1Complete {e}");
 			Recalculate();
 		}
+		#endregion
 	}
 }

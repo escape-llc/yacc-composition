@@ -160,13 +160,13 @@
 			<CommandBar.PrimaryCommands>
 				<AppBarToggleButton x:Name="cb_legend" Label="Toggle" Content="Legend" IsChecked="True" />
 				<!-- TwoWay binding here we're tying into a different XAML namescope -->
-				<AppBarToggleButton x:Name="cb_grid" Label="Toggle" Content="Grid" IsChecked="{Binding ShowGrid, Mode=TwoWay}" />
-				<AppBarToggleButton x:Name="cb_band" Label="Toggle" Content="Band" IsChecked="{Binding ShowBand, Mode=TwoWay}"/>
+				<AppBarToggleButton x:Name="cb_grid" Label="Toggle" Content="Grid" IsChecked="{x:Bind ShowGrid, Mode=TwoWay}" />
+				<AppBarToggleButton x:Name="cb_band" Label="Toggle" Content="Band" IsChecked="{x:Bind ShowBand, Mode=TwoWay}"/>
 				<AppBarButton x:Name="add_head" Content="&#x21d2;&#x2395;" Label="Add Head" Click="Add_head_Click"/>
 				<AppBarButton x:Name="add_tail" Content="&#x2395;&#x21d0;" Label="Add End" Click="Add_item_Click"/>
 				<AppBarButton x:Name="remove_head" Content="&#x21d0;&#x2395;" Label="Delete Head" Click="Remove_head_Click"/>
 				<AppBarButton x:Name="remove_tail" Content="&#x2395;&#x21d2;" Label="Delete End" Click="Remove_tail_Click"/>
-				<AppBarButton x:Name="add_and_remove_head" Content="&#x21d0;&#x2395;&#x21d0;" Label="Scroll" Click="Add_and_remove_head_Click"/>
+				<AppBarButton x:Name="add_and_remove_head" Content="&#x21d0;&#x2395;&#x21d0;" Label="Scroll" Click="Sliding_window_Click"/>
 			</CommandBar.PrimaryCommands>
 		</CommandBar>
 		<yacc:Chart Name="chart" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError"
