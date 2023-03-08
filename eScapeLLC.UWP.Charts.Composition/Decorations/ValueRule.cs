@@ -1,12 +1,10 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
-using eScapeLLC.UWP.Charts.Composition.Factory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
