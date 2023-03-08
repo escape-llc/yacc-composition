@@ -5,14 +5,39 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Windows.Foundation;
 using Windows.UI.Xaml;
+using static eScapeLLC.UWP.Charts.Composition.DataSource;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region DataSource_Operation
+	/// <summary>
+	/// Base of <see cref="DataSource"/> operations.
+	/// </summary>
 	public abstract class DataSource_Operation : CommandPort_Operation {
+		/// <summary>
+		/// Name of target <see cref="DataSource"/>.
+		/// </summary>
 		public string Name { get; internal set; }
 		protected DataSource_Operation() { }
+		/// <summary>
+		/// Apply this operation's changes to given <see cref="IList"/>.
+		/// This gets called automatically by the <see cref="DataSource"/> during processing.
+		/// </summary>
+		/// <param name="list">Apply target.</param>
 		public abstract void ApplyTo(IList list);
+	}
+	/// <summary>
+	/// <see cref="EventArgs"/> for the OperationComplete event.
+	/// </summary>
+	public sealed class OperationCompleteEventArgs : EventArgs {
+		public OperationCompleteEventArgs(DataSource_Operation operation) {
+			Operation = operation;
+		}
+		/// <summary>
+		/// For reference.  The completed operation.
+		/// </summary>
+		public DataSource_Operation Operation { get; private set; }
 	}
 	#endregion
 	#region DataSource_Typed
@@ -154,11 +179,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public static readonly DependencyProperty CommandPortProperty = DependencyProperty.Register(
 			nameof(CommandPort), typeof(DataSource_Operation), typeof(DataSource), new PropertyMetadata(null, new PropertyChangedCallback(CommandPortPropertyChanged))
 		);
+		/// <summary>
+		/// Identifies <see cref="ItemSink"/> DP.
+		/// </summary>
 		public static readonly DependencyProperty ItemSinkProperty = DependencyProperty.Register(
 			nameof(ItemSink), typeof(IList), typeof(DataSource), new PropertyMetadata(null, new PropertyChangedCallback(ItemSinkPropertyChanged))
 		);
 		/// <summary>
-		/// Trigger a refresh when the value changes.
+		/// Trigger <see cref="DataSource_Operation"/> when the value changes.
 		/// </summary>
 		/// <param name="dobj"></param>
 		/// <param name="dpcea"></param>
@@ -194,6 +222,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Used to forward unsolicited messages.
 		/// </summary>
 		public IForwardCommandPort<DataSource_Request, DataSource_Operation> Forward { get; set; }
+		#endregion
+		#region events
+		/// <summary>
+		/// Invoked (on UI thread) after operations complete.
+		/// </summary>
+		public event TypedEventHandler<DataSource, OperationCompleteEventArgs> OperationComplete;
 		#endregion
 		#region operation factory methods
 		/// <summary>
@@ -245,12 +279,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region helpers
 		/// <summary>
-		/// Forward <see cref="CommandPort"/> operations.
+		/// Prepare <see cref="CommandPort"/> operation requests and handle their completion.
 		/// </summary>
 		/// <param name="dso">Data source operation.</param>
 		void Command(DataSource_Operation dso) {
 			dso.Name = Name;
-			Forward?.Forward(new DataSource_Request(Name, dso, op => { var sink = ItemSink; if(sink != null) op.ApplyTo(sink); }));
+			Forward?.Forward(new DataSource_Request(Name, dso, op => {
+				try {
+					var sink = ItemSink;
+					if (sink != null) op.ApplyTo(sink);
+					OperationComplete?.Invoke(this, new OperationCompleteEventArgs(op));
+				}
+				catch(Exception ex) {
+					_trace.Error($"{Name}.DataSource_Request.callback: {ex}");
+				}
+			}));
 		}
 		#endregion
 		#region handlers
