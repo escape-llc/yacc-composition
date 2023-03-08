@@ -4,14 +4,14 @@ using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Numerics;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using Windows.Media.Core;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
-namespace eScapeLLC.UWP.Charts.Composition.Decorations {
+namespace eScapeLLC.UWP.Charts.Composition {
 	public class ValueBand : ChartComponent, IRequireEnterLeave, IProvideSeriesItemValues, /*IProvideSeriesItemLayout,*/
 		IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ValueBand", LogTools.Level.Error);
@@ -30,6 +30,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Decorations {
 		/// How to create the elements for this series.
 		/// </summary>
 		public IElementFactory ElementFactory { get; set; }
+		public IElementFactory FillElementFactory { get; set; }
 		/// <summary>
 		/// How to create animations for series and its elements.
 		/// </summary>
@@ -57,6 +58,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Decorations {
 		protected IAnimationController Animate { get; set; }
 		protected CompositionShape Line1 { get; set; }
 		protected CompositionShape Line2 { get; set; }
+		protected CompositionShape Fill { get; set; }
 		protected Matrix3x2 Model { get; set; }
 		#endregion
 		#region DPs
@@ -110,26 +112,54 @@ namespace eScapeLLC.UWP.Charts.Composition.Decorations {
 			var sprite = ElementFactory.CreateElement(gctx);
 			sprite.TransformMatrix = model;
 			sprite.Offset = offset1;
+			sprite.Comment = $"{Name}.Value1";
 			Line1 = sprite;
 			sprite = ElementFactory.CreateElement(gctx);
 			sprite.TransformMatrix = model;
-			sprite.Offset = offset1;
+			sprite.Offset = offset2;
+			sprite.Comment = $"{Name}.Value2";
 			Line2 = sprite;
-			// TODO create the area sprite
-			// Expressions:
-			// area.Offset = Vector2(0, Math.Min(Line1.Offset.Y, Line2.Offset.Y))
-			// area.Size = Vector2(1, Math.Abs(Line2.Offset.Y - Line2.Offset.Y))
+			// area sprite
+			CompositionShape element = null;
+			if (FillElementFactory != null) {
+				// area.Offset = Vector2(0, Math.Min(Line1.Offset.Y, Line2.Offset.Y))
+				// area.Size = Vector2(1, Math.Abs(Line2.Offset.Y - Line2.Offset.Y))
+				var vs = MappingSupport.ToVector(1, cat.Orientation, Math.Abs(Value2 - Value1), ValueAxis.Orientation);
+				// TODO need to re-evaluate the box style on each value change
+				var ctx = new ColumnElementContext(Container.Compositor, 0, 0, Value2 - Value1, vs.X, vs.Y, cat, ValueAxis);
+				element = FillElementFactory.CreateElement(ctx);
+				element.TransformMatrix = model;
+				element.Offset = Value1 < Value2 ? offset1 : offset2;
+				element.Comment = $"{Name}.Area";
+				// TODO expressions depend on orientation
+				var exprsz = Container.Compositor.CreateExpressionAnimation("Vector2(1,Abs(Line2.Offset.Y - Line1.Offset.Y))");
+				exprsz.SetReferenceParameter("Line1", Line1);
+				exprsz.SetReferenceParameter("Line2", Line2);
+				// TODO expressions depend on orientation
+				var exprof = Container.Compositor.CreateExpressionAnimation("Vector2(0,Min(Line1.Offset.Y, Line2.Offset.Y))");
+				exprof.SetReferenceParameter("Line1", Line1);
+				exprof.SetReferenceParameter("Line2", Line2);
+				(element as CompositionSpriteShape).Geometry.StartAnimation("Offset", exprof);
+				(element as CompositionSpriteShape).Geometry.StartAnimation("Size", exprsz);
+			}
+			Fill = element;
 			if (Animate != null) {
-				var ectx = new ValueContext(Container.Compositor, Value1, cat, ValueAxis, ItemTransition.None);
-				if (!Animate.Enter(ectx, Line1, Container.Shapes)) {
+				var ectx2 = new ValueContext(Container.Compositor, Value2, cat, ValueAxis, ItemTransition.None);
+				if (Fill != null) {
+					if (!Animate.Enter(ectx2, Fill, Container.Shapes)) {
+						Container.Shapes.Add(Fill);
+					}
+				}
+				var ectx1 = new ValueContext(Container.Compositor, Value1, cat, ValueAxis, ItemTransition.None);
+				if (!Animate.Enter(ectx1, Line1, Container.Shapes)) {
 					Container.Shapes.Add(Line1);
 				}
-				ectx = new ValueContext(Container.Compositor, Value2, cat, ValueAxis, ItemTransition.None);
-				if (!Animate.Enter(ectx, Line2, Container.Shapes)) {
+				if (!Animate.Enter(ectx2, Line2, Container.Shapes)) {
 					Container.Shapes.Add(Line2);
 				}
 			}
 			else {
+				if (Fill != null) Container.Shapes.Add(Fill);
 				Container.Shapes.Add(Line1);
 				Container.Shapes.Add(Line2);
 			}
