@@ -3,6 +3,7 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System.Collections.Generic;
 using System.Linq;
+using Windows.UI.Composition;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region DataSourceSeries
@@ -247,6 +248,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>New instance.</returns>
 		protected abstract S CreateState(int index, object item);
 		/// <summary>
+		/// Create shape for given state.
+		/// </summary>
+		/// <param name="cx">Use to create composition objects.</param>
+		/// <param name="state">Source item.</param>
+		/// <returns>New instance.</returns>
+		protected abstract CompositionShape CreateShape(Compositor cx, S state);
+		/// <summary>
 		/// Reset exits all existing elements and enters all the elements given.
 		/// </summary>
 		/// <param name="reset"></param>
@@ -293,6 +301,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <summary>
 		/// Core part of the update cycle.
 		/// </summary>
+		/// <param name="ioc">Operation controller.</param>
 		/// <param name="items">Sequence of item operations.</param>
 		protected virtual void UpdateCore(IOperationController<S> ioc, IEnumerable<ItemStateOperation<S>> items) {
 			var itemstate = new List<ItemStateCore>();
