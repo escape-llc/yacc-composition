@@ -104,6 +104,17 @@
 				</yacc:Brush_LinearGradient>
 			</yf:RoundedRectangleGeometryFactory.StrokeBrush>
 		</yf:RoundedRectangleGeometryFactory>
+		<yf:RoundedRectangleGeometryFactory x:Key="Range1FillStyle">
+			<yf:RoundedRectangleGeometryFactory.FillBrush>
+				<yacc:Brush_LinearGradient StartPoint=".5,0" EndPoint=".5,1">
+					<yacc:Brush_LinearGradient.ColorStops>
+						<yacc:Brush_GradientColorStop Offset="0" Color="#aa8888aa"/>
+						<yacc:Brush_GradientColorStop Offset="0.5" Color="#8888aa88"/>
+						<yacc:Brush_GradientColorStop Offset="1" Color="#aaaa8888"/>
+					</yacc:Brush_LinearGradient.ColorStops>
+				</yacc:Brush_LinearGradient>
+			</yf:RoundedRectangleGeometryFactory.FillBrush>
+		</yf:RoundedRectangleGeometryFactory>
 		<yf:PathGeometryFactory x:Key="Line1Style">
 			<yf:PathGeometryFactory.Stroke>
 				<yacc:Style_Stroke IsStrokeNonScaling="True" StrokeThickness="5" StrokeLineJoin="Round" StrokeStartCap="Round" StrokeEndCap="Round" />
@@ -162,22 +173,18 @@
 			RelativePanel.Below="toolbar" RelativePanel.AlignBottomWithPanel="True"
 			RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="list">
 			<yacc:Chart.DataSources>
-				<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1, Mode=OneWay}" ItemSink="{x:Bind Observations1, Mode=OneWay}" />
-				<yacc:DataSource Name="Source2" CommandPort="{x:Bind CommandPort2, Mode=OneWay}" ItemSink="{x:Bind Observations2, Mode=OneWay}"/>
+				<yacc:DataSource Name="Source1" CommandPort="{x:Bind CommandPort1, Mode=OneWay}" ItemSink="{x:Bind Observations1, Mode=OneWay}" OperationComplete="OnSource1Complete" />
 			</yacc:Chart.DataSources>
 			<yacc:Chart.Components>
 				<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
-					BarWidth=".24" BarOffset="0" />
+					BarWidth=".32" BarOffset="0" />
 				<yacc:ColumnSeries Name="BarSeries2" DataSourceName="Source1" ElementFactory="{StaticResource Column2Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value2"
-					BarWidth=".24" BarOffset=".25" />
+					BarWidth=".32" BarOffset=".33" />
 				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3"
-					BarWidth=".24" BarOffset=".5" />
-				<yacc:ColumnSeries Name="BarSeries4" DataSourceName="Source2" ElementFactory="{StaticResource Column4Style}" AnimationFactory="{StaticResource Animate}"
-					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
-					BarWidth=".24" BarOffset=".75" />
+					BarWidth=".32" BarOffset=".66" />
 				<!--
 				<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
 					CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value3"
@@ -190,12 +197,11 @@
 					LineOffset="1" />
 				<yacc:ValueLabels SourceName="BarSeries2" LabelFormatString="F2" x:Name="v_colv2" LabelTemplate="{StaticResource TextBlock}"
 					PlacementOffset="0,1" LabelOffset="0,-1" LabelStyle="{StaticResource BigLabels}" />
-				-->
 				<yacc:ValueRule Name="Avg1" ValueAxisName="YAxis" Value="{x:Bind Value1Average,Mode=OneWay}" ElementFactory="{StaticResource ValueRuleStyle}" AnimationFactory="{StaticResource Animate}" />
-				<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
-				<!--
-				<yacc:CategoryAxis Name="XAxis2" Side="Top" MinHeight="50" DataSourceName="Source2" LabelMemberPath="Label" Reverse="False" />
 				-->
+				<yacc:ValueBand Name="Range1" ValueAxisName="YAxis" Value1="{x:Bind Value1Average,Mode=OneWay}" Value2="{x:Bind Value2Average,Mode=OneWay}"
+					ElementFactory="{StaticResource ValueRuleStyle}" FillElementFactory="{StaticResource Range1FillStyle}"  AnimationFactory="{StaticResource Animate}" />
+				<yacc:CategoryAxis Name="XAxis" Side="Bottom" MinHeight="50" DataSourceName="Source1" LabelMemberPath="Label" Reverse="False" />
 				<yacc:ValueAxis Name="YAxis" Side="Left" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel}" LabelTemplate="{StaticResource TextBlock}" />
 				<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
 			</yacc:Chart.Components>
