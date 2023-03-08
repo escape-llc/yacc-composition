@@ -174,6 +174,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <returns></returns>
 		public virtual double[] Components() => new double[] { Index };
+		/// <summary>
+		/// Reassign the index.
+		/// </summary>
+		/// <param name="idx">New index.</param>
+		public void Reindex(int idx) { Index = idx; }
 	}
 	/// <summary>
 	/// Suitable for C_1(Value), e.g. Horizontal/Vertical Value Rule that spans series area.
@@ -226,7 +231,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Suitable for C_1(Index + CategoryOffset), C_2(Value) series.
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
-	/// <typeparam name="E">Composition object type.</typeparam>
+	/// <typeparam name="E">Element type.</typeparam>
 	public class ItemState_CategoryValue<E> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where E: CompositionObject {
 		public E Element { get; protected set; }
 		public ItemState_CategoryValue(int index, double categoryOffset, double c2, int channel = 0) : base(index, c2, channel) {
