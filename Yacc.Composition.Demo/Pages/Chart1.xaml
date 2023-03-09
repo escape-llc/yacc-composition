@@ -177,13 +177,13 @@
 			</yacc:Chart.DataSources>
 			<yacc:Chart.Components>
 				<yacc:ColumnSeries Name="BarSeries1" DataSourceName="Source1" ElementFactory="{StaticResource ColumnStyle}" AnimationFactory="{StaticResource Animate}"
-					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1"
+					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value1" Title="Value 1"
 					BarWidth=".32" BarOffset="0" />
 				<yacc:ColumnSeries Name="BarSeries2" DataSourceName="Source1" ElementFactory="{StaticResource Column2Style}" AnimationFactory="{StaticResource Animate}"
-					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value2"
+					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value2" Title="Value 2"
 					BarWidth=".32" BarOffset=".33" />
 				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}"
-					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3"
+					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3" Title="Value 3"
 					BarWidth=".32" BarOffset=".66" />
 				<!--
 				<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
@@ -206,6 +206,14 @@
 				<yacc:ValueAxis Name="YAxis2" Side="Right" MinWidth="50" AxisMargin="2" LabelStyle="{StaticResource ValueAxisLabel_Right}" LabelTemplate="{StaticResource TextBlock}" />
 			</yacc:Chart.Components>
 		</yacc:Chart>
+		<!-- ElementName binding okay here we're in the same XAML namescope -->
+		<Border Style="{StaticResource Legend}"
+			Visibility="{Binding ElementName=cb_legend,Path=IsChecked}"
+			RelativePanel.AlignRightWith="chart" RelativePanel.AlignTopWith="chart">
+			<ItemsControl x:Name="legend" Margin="2" Padding="2"
+				ItemsSource="{Binding ElementName=chart,Path=LegendItems}" ItemTemplate="{StaticResource LegendItem2}"
+				/>
+		</Border>
 		<ListView Name="list" ItemsSource="{x:Bind Observations1, Mode=OneWay}" Width="250" MinWidth="200" MaxWidth="300"
 			BorderThickness="2,0,0,0" BorderBrush="DarkGray"
 			VerticalContentAlignment="Stretch" HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch"
