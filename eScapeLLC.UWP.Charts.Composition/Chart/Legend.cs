@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Numerics;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
@@ -21,6 +18,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#region LegendWithElement
 	/// <summary>
 	/// Legend VM with a custom <see cref="FrameworkElement"/> for its visualization.
+	/// Use a ContentControl in the DataTemplate with Content bound to <see cref="Element"/>.
 	/// </summary>
 	public class LegendWithElement : LegendBase {
 		FrameworkElement _element;
