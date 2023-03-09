@@ -206,6 +206,49 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		Rect Area { get; }
 	}
 	#endregion
+	#region IProvideLegend
+	/// <summary>
+	/// Ability to participate in the legend items collection.
+	/// </summary>
+	public interface IProvideLegend {
+		/// <summary>
+		/// The legend item(s) for this component.
+		/// MUST return a stable enumeration (same values).
+		/// MUST NOT be called before <see cref="IRequireEnterLeave.Enter"/>.
+		/// </summary>
+		IEnumerable<LegendBase> LegendItems { get; }
+	}
+	#endregion
+	#region IProvideLegendDynamic
+	/// <summary>
+	/// Event args for the <see cref="IProvideLegendDynamic.LegendChanged"/> event.
+	/// </summary>
+	public sealed class LegendDynamicEventArgs : EventArgs {
+		/// <summary>
+		/// The previous items.
+		/// </summary>
+		public IEnumerable<LegendBase> PreviousItems { get; private set; }
+		/// <summary>
+		/// The current items.
+		/// </summary>
+		public IEnumerable<LegendBase> CurrentItems { get; private set; }
+		/// <summary>
+		/// Ctor.
+		/// </summary>
+		/// <param name="pitems"></param>
+		/// <param name="nitems"></param>
+		public LegendDynamicEventArgs(IEnumerable<LegendBase> pitems, IEnumerable<LegendBase> nitems) { PreviousItems = pitems; CurrentItems = nitems; }
+	}
+	/// <summary>
+	/// Ability to provide a dynamically-varying set of legend items.
+	/// </summary>
+	public interface IProvideLegendDynamic : IProvideLegend {
+		/// <summary>
+		/// Event to signal the legend items have changed.
+		/// </summary>
+		event TypedEventHandler<ChartComponent, LegendDynamicEventArgs> LegendChanged;
+	}
+	#endregion
 	#region IChartRenderContext
 	/// <summary>
 	/// Which type of render pipeline is running.
