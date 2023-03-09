@@ -20,7 +20,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			internal FrameworkElement Element;
 			internal TextShim label;
 			public Axis_ItemState(int index) : base(index) { }
-			public void Reindex(int idx) { Index = idx; }
 			public void ResetElement() { Element = null; }
 			public void SetElement(FrameworkElement cs) { Element = cs; }
 		}
