@@ -1,10 +1,15 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata.Ecma335;
 using Windows.UI.Composition;
+using Windows.UI.Xaml;
+using Windows.UI.Xaml.Controls;
+using Windows.UI.Xaml.Hosting;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region DataSourceSeries
@@ -18,6 +23,18 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// MUST match the name of a data source.
 		/// </summary>
 		public string DataSourceName { get; set; }
+		/// <summary>
+		/// The title for the values.
+		/// </summary>
+		public string Title { get { return (String)GetValue(TitleProperty); } set { SetValue(TitleProperty, value); } }
+		#endregion
+		#region DPs
+		/// <summary>
+		/// Identifies <see cref="Title"/> dependency property.
+		/// </summary>
+		public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
+			nameof(Title), typeof(String), typeof(DataSourceSeries), new PropertyMetadata("Title")
+		);
 		#endregion
 		#region abstract operation handlers
 		/// <summary>
@@ -82,7 +99,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Base class for <see cref="DataSourceSeries"/> based on 2 components (category, value).
 	/// </summary>
 	/// <typeparam name="S">Item type. MUST NOT be an Inner Class!</typeparam>
-	public abstract class CategoryValueSeries<S> : DataSourceSeries,
+	public abstract class CategoryValueSeries<S> : DataSourceSeries, IProvideLegend,
 		IConsumer<Phase_ComponentExtents>, IConsumer<Phase_ModelComplete> where S: ItemStateCore {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryValueSeries", LogTools.Level.Error);
 		#region properties
@@ -155,6 +172,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// This is because the "end" phases execute regardless of the <see cref="DataSource"/> that caused it.
 		/// </summary>
 		protected IEnumerable<ItemStateOperation<S>> Pending { get; set; }
+		#endregion
+		#region IProvideLegend
+		IEnumerable<LegendBase> IProvideLegend.LegendItems {
+			get { if (_legend == null) _legend = Legend(); return new[] { _legend }; }
+		}
+		private LegendBase _legend;
+		LegendBase Legend() {
+			var fe = LegendSupport.Create();
+			var vis = CreateLegendVisual(Window.Current.Compositor);
+			LegendSupport.SetVisual(fe, vis);
+			var leg = new LegendWithElement() { Title = Title, Element = fe };
+			return leg;
+		}
 		#endregion
 		#region ctor
 		public CategoryValueSeries() {
@@ -256,6 +286,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="state">Source item.</param>
 		/// <returns>New instance.</returns>
 		protected abstract CompositionShape CreateShape(Compositor cx, S state);
+		protected abstract Visual CreateLegendVisual(Compositor cx);
 		/// <summary>
 		/// Reset exits all existing elements and enters all the elements given.
 		/// </summary>

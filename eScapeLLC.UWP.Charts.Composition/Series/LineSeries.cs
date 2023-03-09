@@ -6,6 +6,7 @@ using Microsoft.Graphics.Canvas.Geometry;
 using System.Collections;
 using System.Collections.Generic;
 using System.Numerics;
+using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Markup;
@@ -42,6 +43,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Holds all the shapes for this series.
 		/// </summary>
 		protected CompositionContainerShape Container { get; set; }
+		#endregion
+		#region extensions
+		protected override Visual CreateLegendVisual(Compositor cx) {
+			var vis = cx.CreateShapeVisual();
+			var rectangle = cx.CreateRectangleGeometry();
+			rectangle.Size = new Vector2(32, 32);
+			var sprite = cx.CreateSpriteShape(rectangle);
+			sprite.FillBrush = cx.CreateColorBrush(Colors.BlueViolet);
+			vis.Shapes.Add(sprite);
+			return vis;
+		}
 		#endregion
 		#region data source operations
 		protected override void ModelComplete() {

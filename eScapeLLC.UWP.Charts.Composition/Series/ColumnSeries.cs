@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Windows.Foundation;
+using Windows.UI;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
@@ -80,6 +81,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#region helpers
 		#endregion
 		#region extension points
+		protected override Visual CreateLegendVisual(Compositor cx) {
+			var vis = cx.CreateShapeVisual();
+			var rectangle = cx.CreateRectangleGeometry();
+			rectangle.Size = LegendSupport.DesiredSize;
+			var sprite = cx.CreateSpriteShape(rectangle);
+			if (ElementFactory != null) {
+				ElementFactory.ApplyStyle(sprite);
+			}
+			else {
+				sprite.FillBrush = cx.CreateColorBrush(Colors.BlueViolet);
+			}
+			vis.Shapes.Add(sprite);
+			return vis;
+		}
 		/// <summary>
 		/// Create some state or NULL.
 		/// </summary>

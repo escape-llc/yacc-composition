@@ -145,6 +145,7 @@
     <Compile Include="Support\Contexts.cs" />
     <Compile Include="Support\Core.cs" />
     <Compile Include="Support\Events.cs" />
+    <Compile Include="Support\LegendSupport.cs" />
     <Compile Include="Support\MappingSupport.cs" />
     <Compile Include="Support\MatrixSupport.cs" />
     <Compile Include="Support\Recycler.cs" />
