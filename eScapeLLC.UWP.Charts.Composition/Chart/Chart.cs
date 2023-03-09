@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Linq;
 using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Xaml;
@@ -153,6 +154,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Obtained from the XAML and programmatic.
 		/// </summary>
 		public ChartComponentCollection Components { get; private set; }
+		/// <summary>
+		/// The list of Legend items.
+		/// This is intended for data binding to an external UI to present the legend.
+		/// </summary>
+		public ObservableCollection<LegendBase> LegendItems { get; private set; }
 		EventBus Bus { get; set; }
 		/// <summary>
 		/// Obtained from the templated parent.
@@ -180,6 +186,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#region ctor
 		public Chart() {
 			this.DefaultStyleKey = typeof(Chart);
+			LegendItems = new ObservableCollection<LegendBase>();
 			DeferredEnter = new List<ChartComponent>();
 			DataSources = new ChartDataSourceCollection();
 			DataSources.CollectionChanged += DataSources_CollectionChanged;
@@ -324,6 +331,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 			}
 		}
+		/// <summary>
+		/// Manage dynamic legend updates.
+		/// </summary>
+		/// <param name="sender">Component sending update.</param>
+		/// <param name="ldea">Current state of legend.</param>
+		private void Ipld_LegendChanged(ChartComponent sender, LegendDynamicEventArgs ldea) {
+			foreach (var prev in ldea.PreviousItems) {
+				if (!ldea.CurrentItems.Contains(prev))
+					LegendItems.Remove(prev);
+			}
+			foreach (var curr in ldea.CurrentItems) {
+				if (!LegendItems.Contains(curr))
+					LegendItems.Add(curr);
+			}
+		}
 		#endregion
 		#region helpers
 		/// <summary>
@@ -343,10 +365,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (cc is IRequireEnterLeave irel) {
 				irel.Enter(icelc);
 			}
+			// for now anything can provide legend items
+			if (cc is IProvideLegend ipl) {
+				foreach (var li in ipl.LegendItems) {
+					LegendItems.Add(li);
+				}
+			}
+			if (cc is IProvideLegendDynamic ipld) {
+				// attach the event
+				ipld.LegendChanged -= Ipld_LegendChanged;
+				ipld.LegendChanged += Ipld_LegendChanged;
+			}
 			Bus.RegisterInstance(cc);
 		}
 		void ComponentLeave(IChartEnterLeaveContext icelc, ChartComponent cc) {
 			Bus.UnregisterInstance(cc);
+			if (cc is IProvideLegendDynamic ipld) {
+				// detach the event
+				ipld.LegendChanged -= Ipld_LegendChanged;
+			}
+			if (cc is IProvideLegend ipl) {
+				foreach (var li in ipl.LegendItems) {
+					LegendItems.Remove(li);
+				}
+			}
 			// allow bus access during leave
 			if (cc is IRequireEnterLeave irel) {
 				irel.Leave(icelc);

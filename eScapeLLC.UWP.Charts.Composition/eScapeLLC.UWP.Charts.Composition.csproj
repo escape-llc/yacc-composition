@@ -128,6 +128,7 @@
     <Compile Include="Chart\ChartComponent.cs" />
     <Compile Include="Chart\DataSource.cs" />
     <Compile Include="Chart\Layer.cs" />
+    <Compile Include="Chart\Legend.cs" />
     <Compile Include="Decorations\ValueBand.cs" />
     <Compile Include="Decorations\ValueLabels.cs" />
     <Compile Include="Decorations\ValueRule.cs" />
