@@ -1,7 +1,6 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
-using eScapeLLC.UWP.Charts.Composition.Factory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,15 +16,14 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// NOTE THIS CAN NO LONGER BE an Inner Class or XAML will not load it!
 	/// </summary>
 	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape> {
-		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
-		}
+		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
 	}
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
 	/// Container takes the P matrix, Shapes each take the (same) M matrix.
 	/// </summary>
-	public class ColumnSeries : CategoryValueSeries<ColumnSeries_ItemState>,
-		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout, IOperationController<ColumnSeries_ItemState>,
+	public class ColumnSeries : CategoryValue_ShapePerItem<ColumnSeries_ItemState>,
+		IRequireEnterLeave, IProvideSeriesItemValues, IProvideSeriesItemLayout,
 		IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("ColumnSeries", LogTools.Level.Error);
 		#region inner
@@ -74,68 +72,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public IEnumerable<ISeriesItem> SeriesItemValues => ItemState.AsReadOnly();
 		#endregion
 		#region internal
-		protected IChartCompositionLayer Layer { get; set; }
 		/// <summary>
-		/// Maintained from axis extents.
+		/// Call <see cref="IAnimationController.InitTransform(Matrix3x2)"/> exactly once.
 		/// </summary>
-		protected Matrix3x2 Model { get; set; }
-		/// <summary>
-		/// Holds all the shapes for this series.
-		/// </summary>
-		protected CompositionContainerShape Container { get; set; }
-		protected IAnimationController Animate { get; set; }
+		bool didInitTransform = false;
 		#endregion
 		#region helpers
-		void UpdateOffset(ColumnSeries_ItemState item) {
-			if (item.Element == null) return;
-			if (Animate != null) {
-				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y}");
-				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, ItemTransition.None);
-				Animate.Offset(ctx, item.Element);
-			}
-			else {
-				var offset = item.OffsetForColumn(CategoryAxis.Orientation, ValueAxis.Orientation);
-				_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y} to:{offset.X},{offset.Y}");
-				item.Element.Offset = offset;
-			}
-		}
-		#endregion
-		#region IOperationController<>
-		void IOperationController<ColumnSeries_ItemState>.LiveItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
-			_trace.Verbose($"{Name}.Live index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
-			state.Reindex(index);
-			bool elementSelected = IsSelected(state);
-			if (elementSelected && state.Element == null) {
-				state.SetElement(CreateShape(Container.Compositor, state));
-				Entering(state, it);
-				UpdateStyle(state);
-				UpdateOffset(state);
-			}
-			else if (!elementSelected && state.Element != null) {
-				Exiting(state, it);
-			}
-			else {
-				UpdateStyle(state);
-				UpdateOffset(state);
-			}
-		}
-		void IOperationController<ColumnSeries_ItemState>.EnteringItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
-			_trace.Verbose($"{Name}.Entering index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
-			state.Reindex(index);
-			bool elementSelected = IsSelected(state);
-			if (elementSelected) {
-				state.SetElement(CreateShape(Container.Compositor, state));
-				Entering(state, it);
-				UpdateStyle(state);
-				UpdateOffset(state);
-			}
-		}
-		void IOperationController<ColumnSeries_ItemState>.ExitingItem(int index, ItemTransition it, ColumnSeries_ItemState state) {
-			_trace.Verbose($"{Name}.Exiting index:{index} it:{it} st[{state.Index}]:{state.DataValue} el:{state.Element}");
-			if (state.Element != null) {
-				Exiting(state, it);
-			}
-		}
 		#endregion
 		#region extension points
 		/// <summary>
@@ -172,48 +114,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return element;
 		}
 		/// <summary>
-		/// Item is entering the chart.
+		/// Create the context for <see cref="IAnimationController"/>.
 		/// </summary>
-		/// <param name="item"></param>
-		protected virtual void Entering(ColumnSeries_ItemState item, ItemTransition it) {
-			if (item == null || item.Element == null) return;
-			if (Animate != null) {
-				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				Animate.Enter(ctx, item.Element, Container.Shapes);
-			}
-			else {
-				if (it == ItemTransition.Head) {
-					Container.Shapes.Insert(0, item.Element);
-				}
-				else {
-					Container.Shapes.Add(item.Element);
-				}
-			}
-		}
-		/// <summary>
-		/// Item is exiting the chart.
-		/// </summary>
-		/// <param name="item"></param>
-		protected virtual void Exiting(ColumnSeries_ItemState item, ItemTransition it) {
-			if (item == null || item.Element == null) return;
-			if (Animate != null) {
-				var ctx = new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
-				Animate.Exit(ctx, item.Element, Container.Shapes, co => {
-					item.ResetElement();
-				});
-			}
-			else {
-				Container.Shapes.Remove(item.Element);
-				item.ResetElement();
-			}
-		}
-		protected virtual void UpdateStyle(ColumnSeries_ItemState item) {
-		}
-		protected virtual bool IsSelected(ColumnSeries_ItemState item) {
-			return true;
-		}
+		/// <param name="item">Source item.</param>
+		/// <param name="it">Transition info.</param>
+		/// <returns>New instance.</returns>
+		protected override IElementFactoryContext CreateAnimateContext(ColumnSeries_ItemState item, ItemTransition it) => new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
 		#endregion
 		#region render pipeline event extensions
+		/// <summary>
+		/// <inheritdoc/>
+		/// </summary>
 		protected override void ComponentExtents() {
 			if (Pending == null) return;
 			_trace.Verbose($"{Name} component-extents");
@@ -228,15 +139,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			UpdateLimits(index);
 		}
-		bool did = false;
+		/// <summary>
+		/// <inheritdoc/>
+		/// </summary>
 		protected override void UpdateModelTransform() {
 			Matrix3x2 model = CategoryAxis.Orientation == AxisOrientation.Horizontal
 			? MatrixSupport.ModelFor(CategoryAxis.Minimum, CategoryAxis.Maximum, ValueAxis.Minimum, ValueAxis.Maximum)
 			: MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			if (model == Model) return;
-			if(!did) {
+			if(!didInitTransform) {
 				Animate?.InitTransform(model);
-				did = true;
+				didInitTransform = true;
 			}
 			Model = model;
 			if(AnimationFactory != null) {
@@ -250,6 +163,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				}
 			}
 		}
+		/// <summary>
+		/// <inheritdoc/>
+		/// </summary>
 		protected override void ModelComplete() {
 			if (Pending == null) return;
 			if (Container == null) return;
