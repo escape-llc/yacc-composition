@@ -218,6 +218,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="iefc">Access to all.</param>
 		/// <returns>New instance.</returns>
 		CompositionShape CreateElement(IElementFactoryContext iefc);
+		/// <summary>
+		/// Apply style to the given sprite.
+		/// </summary>
+		/// <param name="cs"></param>
+		void ApplyStyle(CompositionSpriteShape cs);
 	}
 	#endregion
 	#region IAnimationController

@@ -2,13 +2,34 @@
 using System;
 using System.Numerics;
 using Windows.UI.Composition;
+using Windows.UI.Xaml.Media;
 
 namespace eScapeLLC.UWP.Charts.Composition.Factory {
-	#region RectangleGeometryFactory
+	#region StrokeGeometry
 	/// <summary>
-	/// Default factory for creating rounded rectangle sprites.
+	/// Common base for stroked geometry.
 	/// </summary>
-	public class RectangleGeometryFactory : IElementFactory {
+	public abstract class StrokeGeometry {
+		#region properties
+		public Style_Brush StrokeBrush { get; set; }
+		public Style_Stroke Stroke { get; set; }
+		#endregion
+		#region public
+		public void ApplyStyle(CompositionSpriteShape sprite) {
+			Stroke?.Apply(sprite);
+			if (StrokeBrush != null) {
+				sprite.StrokeBrush = StrokeBrush.CreateBrush(sprite.Compositor);
+				sprite.FillBrush = sprite.StrokeBrush;
+			}
+		}
+		#endregion
+	}
+	#endregion
+	#region FillAndStrokeGeometry
+	/// <summary>
+	/// Common base for filled and stroked geometry.
+	/// </summary>
+	public abstract class FillAndStrokeGeometry {
 		#region properties
 		public Style_Brush FillBrush { get; set; }
 		public Style_Brush StrokeBrush { get; set; }
@@ -19,7 +40,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		/// </summary>
 		public bool FlipGradients { get; set; }
 		#endregion
-		public RectangleGeometryFactory() { }
+		#region helpers
 		/// <summary>
 		/// Swap the start and end points of gradient brush.
 		/// </summary>
@@ -30,6 +51,26 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			clgb.StartPoint = clgb.EndPoint;
 			clgb.EndPoint = flip;
 		}
+		#endregion
+		#region public
+		public void ApplyStyle(CompositionSpriteShape sprite) {
+			Stroke?.Apply(sprite);
+			if (FillBrush != null) {
+				sprite.FillBrush = FillBrush.CreateBrush(sprite.Compositor);
+			}
+			if (StrokeBrush != null) {
+				sprite.StrokeBrush = StrokeBrush.CreateBrush(sprite.Compositor);
+			}
+		}
+		#endregion
+	}
+	#endregion
+	#region RectangleGeometryFactory
+	/// <summary>
+	/// Default factory for creating rounded rectangle sprites.
+	/// </summary>
+	public class RectangleGeometryFactory : FillAndStrokeGeometry, IElementFactory {
+		public RectangleGeometryFactory() { }
 		/// <summary>
 		/// <inheritdoc/>
 		/// Flips the gradient direction for negative bars.
@@ -68,11 +109,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	/// <summary>
 	/// Default factory for creating rounded rectangle sprites.
 	/// </summary>
-	public class RoundedRectangleGeometryFactory : IElementFactory {
+	public class RoundedRectangleGeometryFactory : FillAndStrokeGeometry, IElementFactory {
 		#region properties
-		public Style_Brush FillBrush { get; set; }
-		public Style_Brush StrokeBrush { get; set; }
-		public Style_Stroke Stroke { get; set; }
 		/// <summary>
 		/// Corner radius is in NDC units (output side of transform).
 		/// </summary>
@@ -81,18 +119,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		/// Corner radius is in NDC units (output side of transform).
 		/// </summary>
 		public double CornerRadiusY { get; set; } = double.NaN;
-		/// <summary>
-		/// Whether to flip linear gradients for negative value bars.
-		/// Use this when the gradient orients along the bar's axis, and it will "mirror" the gradients around the value axis zero.
-		/// </summary>
-		public bool FlipGradients { get; set; }
 		#endregion
 		public RoundedRectangleGeometryFactory() { }
-		protected void FlipGradient(Brush_LinearGradient blg, CompositionLinearGradientBrush clgb) {
-			var flip = clgb.StartPoint;
-			clgb.StartPoint = clgb.EndPoint;
-			clgb.EndPoint = flip;
-		}
 		/// <summary>
 		/// <inheritdoc/>
 		/// Flips the gradient direction for negative bars.
@@ -135,9 +163,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	/// Use for <see cref="ValueRule"/> etc.
 	/// Creates normalized geometry; owner MUST manage the <see cref="CompositionShape.Offset"/> to position correctly.
 	/// </summary>
-	public class LineGeometryFactory : IElementFactory {
-		public Style_Brush StrokeBrush { get; set; }
-		public Style_Stroke Stroke { get; set; }
+	public class LineGeometryFactory : StrokeGeometry, IElementFactory {
 		public CompositionShape CreateElement(IElementFactoryContext iefc) {
 			var line = iefc.Compositor.CreateLineGeometry();
 			if(iefc is IElementLineContext ielc) {
@@ -161,9 +187,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	/// <summary>
 	/// Default factor for <see cref="CompositionPath"/> sprites.
 	/// </summary>
-	public class PathGeometryFactory : IElementFactory {
-		public Style_Brush StrokeBrush { get; set; }
-		public Style_Stroke Stroke { get; set; }
+	public class PathGeometryFactory : StrokeGeometry, IElementFactory {
 		public CompositionShape CreateElement(IElementFactoryContext iefc) {
 			var pathgeom = iefc.Compositor.CreatePathGeometry((iefc as IElementCompositionPath).Path);
 			var sprite = iefc.Compositor.CreateSpriteShape(pathgeom);
