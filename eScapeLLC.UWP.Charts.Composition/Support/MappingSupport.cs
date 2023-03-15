@@ -11,7 +11,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public static AxisOrientation OppositeOf(AxisOrientation ao) => ao == AxisOrientation.Vertical ? AxisOrientation.Horizontal : AxisOrientation.Vertical;
 		/// <summary>
 		/// Map components to their respective cartesian axes.
-		/// Horizontal axis receives the X, Vertical axis receives the Y.
+		/// Horizontal -> X, Vertical -> Y.
 		/// </summary>
 		/// <param name="c1">Component 1.</param>
 		/// <param name="c1ori">Component 1 axis orientation.</param>
@@ -45,6 +45,30 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public static Vector2 ToVector(double c1, AxisOrientation c1ori, double c2, AxisOrientation c2ori) {
 			var (xx, yy) = MapComponents(c1, c1ori, c2, c2ori);
 			return new Vector2((float)xx, (float)yy);
+		}
+		/// <summary>
+		/// Calculate offset for Column series sprite.
+		/// If the value is negative, adjust the vertical offset by that amount.
+		/// </summary>
+		/// <param name="c1">Component 1.</param>
+		/// <param name="c1ori">C1 axis orientation.</param>
+		/// <param name="c2">Component 2.</param>
+		/// <param name="c2ori">C2 axis orientation.</param>
+		/// <returns>Value to use for the Offset.</returns>
+		/// <exception cref="ArgumentException"></exception>
+		public static Vector2 OffsetForColumn(double c1, AxisOrientation c1ori, double c2, AxisOrientation c2ori) {
+			return MappingSupport.ToVector(c1, c1ori, Math.Min(c2, 0), c2ori);
+		}
+		/// <summary>
+		/// Offsets to the point (C_1,C_2) exactly.
+		/// Sprite MUST be able to keep itself centered based on its current size.
+		/// </summary>
+		/// <param name="c1ori">Category axis orientation.</param>
+		/// <param name="c2ori">Value axis orientation.</param>
+		/// <returns>Value to use for the Offset.</returns>
+		/// <exception cref="ArgumentException"></exception>
+		public static Vector2 OffsetFor(double c1, AxisOrientation c1ori, double c2, AxisOrientation c2ori) {
+			return MappingSupport.ToVector(c1, c1ori, c2, c2ori);
 		}
 	}
 }
