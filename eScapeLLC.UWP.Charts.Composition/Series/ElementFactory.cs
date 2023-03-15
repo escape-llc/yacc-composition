@@ -14,11 +14,26 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		Compositor Compositor { get; }
 	}
+	/// <summary>
+	/// Expose the axes for C_1 and C_2.
+	/// </summary>
 	public interface IElementExtentContext {
+		/// <summary>
+		/// C_1 axis information.
+		/// </summary>
 		Axis_Extents Component1Axis { get; }
+		/// <summary>
+		/// C_2 axis information.
+		/// </summary>
 		Axis_Extents Component2Axis { get; }
 	}
+	/// <summary>
+	/// Expose the value (usually for single-component C_1).  Use with <see cref="IElementExtentContext"/>.
+	/// </summary>
 	public interface IElementValueContext {
+		/// <summary>
+		/// The value.
+		/// </summary>
 		double Value { get; }
 	}
 	/// <summary>
@@ -50,7 +65,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Additional information for creating Line Segment Geometry.
 	/// </summary>
 	public interface IElementLineContext {
+		/// <summary>
+		/// Start point.
+		/// </summary>
 		Vector2 Start { get; }
+		/// <summary>
+		/// End point.
+		/// </summary>
 		Vector2 End { get; }
 	}
 	/// <summary>
@@ -226,6 +247,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	}
 	#endregion
 	#region IAnimationController
+	/// <summary>
+	/// Provide and control animations for chart elements.
+	/// Caller of <see cref="IAnimationController"/> methods MUST be prepared to handle the FALSE return value and perform "equivalent" operation without animations.
+	/// <para>
+	/// Methods that take a callback only invoke the callback when returning TRUE.
+	/// </para>
+	/// </summary>
 	public interface IAnimationController : IDisposable {
 		/// <summary>
 		/// Initialize transform components before first use of <see cref="Transform(IElementFactoryContext, Matrix3x2)"/>.
@@ -275,7 +303,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	#endregion
 	#region IAnimationFactory
 	/// <summary>
-	/// Ability to animate series elements.
+	/// Entry point to obtain <see cref="IAnimationController"/>.
 	/// </summary>
 	public interface IAnimationFactory {
 		/// <summary>

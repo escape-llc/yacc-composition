@@ -27,12 +27,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public double Value1 { get { return (double)GetValue(Value1Property); } set { SetValue(Value1Property, value); } }
 		public double Value2 { get { return (double)GetValue(Value2Property); } set { SetValue(Value2Property, value); } }
 		/// <summary>
-		/// How to create the elements for this series.
+		/// How to create the Line elements for this component.
 		/// </summary>
 		public IElementFactory ElementFactory { get; set; }
+		/// <summary>
+		/// How to create the Fill element for this component.
+		/// </summary>
 		public IElementFactory FillElementFactory { get; set; }
 		/// <summary>
-		/// How to create animations for series and its elements.
+		/// How to create animations for component elements.
 		/// </summary>
 		public IAnimationFactory AnimationFactory { get; set; }
 		/// <summary>

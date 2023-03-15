@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Numerics;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
