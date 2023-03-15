@@ -272,9 +272,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>Value to use for the Offset.</returns>
 		/// <exception cref="ArgumentException"></exception>
 		public Vector2 OffsetForColumn(AxisOrientation cori, AxisOrientation vori) {
-			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var pt = MappingSupport.ToVector(Component1, cori, Math.Min(Component2, 0), vori);
-			return pt;
+			return MappingSupport.OffsetForColumn(Component1, cori, Component2, vori);
 		}
 		/// <summary>
 		/// Calculate offset for Marker series sprite.
@@ -285,10 +283,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="vori">Value axis orientation.</param>
 		/// <returns>Value to use for the Offset.</returns>
 		/// <exception cref="ArgumentException"></exception>
-		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
-			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
-			return pt;
+		public Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
+			return MappingSupport.OffsetFor(Component1, cori, Component2, vori);
 		}
 		#endregion
 	}
