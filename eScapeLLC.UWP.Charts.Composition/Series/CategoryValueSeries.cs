@@ -5,11 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
-using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Hosting;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region DataSourceSeries
@@ -407,12 +404,25 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected IAnimationController Animate { get; set; }
 		#endregion
 		#region extension points
+		/// <summary>
+		/// Provide a context for animation controller.
+		/// </summary>
+		/// <param name="item">Target item.</param>
+		/// <param name="it">Transition info.</param>
+		/// <returns>New instance.</returns>
 		protected abstract IElementFactoryContext CreateAnimateContext(S item, ItemTransition it);
-		protected virtual bool IsSelected(S item) {
-			return true;
-		}
-		protected virtual void UpdateStyle(S item) {
-		}
+		/// <summary>
+		/// Return whether this item is selected for display.
+		/// Default implementation returns TRUE.
+		/// </summary>
+		/// <param name="item">Target item.</param>
+		/// <returns>true: display; false: no display.</returns>
+		protected virtual bool IsSelected(S item) => true;
+		/// <summary>
+		/// Apply any dynamic style updates.
+		/// </summary>
+		/// <param name="item">Target item.</param>
+		protected virtual void UpdateStyle(S item) { }
 		/// <summary>
 		/// Item is entering the chart.
 		/// </summary>
