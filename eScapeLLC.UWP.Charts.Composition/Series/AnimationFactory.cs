@@ -1,12 +1,13 @@
 ﻿using eScape.Core;
 using System;
-using System.ComponentModel;
 using System.Numerics;
 using Windows.UI.Composition;
-using Windows.UI.Xaml.Shapes;
 
 namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	#region AnimationFactory
+	/// <summary>
+	/// Factory for the <see cref="AnimationController"/>.
+	/// </summary>
 	public class AnimationFactory : IAnimationFactory {
 		public const int DEFAULT = 400;
 		#region properties
@@ -73,7 +74,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	#endregion
 	#region AnimationController
 	/// <summary>
-	/// Provide default animations for the chart elements.
+	/// Provide default animations for the chart elements: Enter, Exit, Offset, TransformMatrix.
 	/// </summary>
 	public class AnimationController : IAnimationController {
 		static readonly LogTools.Flag _trace = LogTools.Add("AnimationController", LogTools.Level.Error);
@@ -107,17 +108,23 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		private bool disposedValue;
 		#endregion
 		#region helpers
-		void Enter_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
-			// calculate the spawn point
+		/// <summary>
+		/// Calculate the spawn point.
+		/// </summary>
+		/// <param name="ieec"></param>
+		/// <param name="iedo"></param>
+		/// <returns></returns>
+		Vector2 Spawn(IElementCategoryValueContext ieec, IElementDataOperation iedo) {
 			double c1 = iedo.Transition == ItemTransition.Head
 				? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
 				: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
-			var spawn = MappingSupport.ToVector(
-				c1, ieec.CategoryAxis.Orientation,
-				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
-			_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({spawn.X},{spawn.Y})");
+			return MappingSupport.OffsetForColumn(c1, ieec.CategoryAxis.Orientation, ieec.Item.DataValue, ieec.ValueAxis.Orientation);
+		}
+		void Enter_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
+			var enter = Spawn(ieec, iedo);
+			_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({enter.X},{enter.Y})");
 			// Enter VT at spawn point
-			cs.Offset = spawn;
+			cs.Offset = enter;
 			if (iedo.Transition == ItemTransition.Head) {
 				ssc.Insert(0, cs);
 			}
@@ -125,9 +132,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 				ssc.Add(cs);
 			}
 			cb?.Invoke(cs);
-			if (enter.Target != nameof(CompositionShape.Offset)) {
+			if (this.enter.Target != nameof(CompositionShape.Offset)) {
 				// if it's Offset we expect a call for that next, otherwise start this one
-				cs.StartAnimation(enter.Target, enter);
+				cs.StartAnimation(this.enter.Target, this.enter);
 			}
 			// connect to expression for TransformMatrix
 			cs.StartAnimation(xform.Target, xform);
@@ -149,22 +156,16 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 					ccb.Dispose();
 				}
 			};
-			// calculate the exit point
-			double c1 = iedo.Transition == ItemTransition.Head
-				? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
-				: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
-			var spawn = MappingSupport.ToVector(
-				c1, ieec.CategoryAxis.Orientation,
-				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
-			_trace.Verbose($"Exit {cs.Comment} {iedo.Transition} spawn:({spawn.X},{spawn.Y})");
-			exit.SetVector2Parameter("Index", spawn);
-			cs.StartAnimation(exit.Target, exit);
+			var exit = Spawn(ieec, iedo);
+			_trace.Verbose($"Exit {cs.Comment} {iedo.Transition} spawn:({exit.X},{exit.Y})");
+			this.exit.SetVector2Parameter("Index", exit);
+			cs.StartAnimation(this.exit.Target, this.exit);
 			ccb.End();
 		}
 		void Offset_CategoryValue(CompositionShape cs, IElementCategoryValueContext ieec) {
-			var vxx = MappingSupport.ToVector(
+			var vxx = MappingSupport.OffsetForColumn(
 				ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
-				Math.Min(ieec.Item.DataValue, 0), ieec.ValueAxis.Orientation);
+				ieec.Item.DataValue, ieec.ValueAxis.Orientation);
 			_trace.Verbose($"Offset {cs.Comment} [{ieec.Item.CategoryValue}] move:({vxx.X},{vxx.Y})");
 			if (vxx != cs.Offset) {
 				offset.SetVector2Parameter("Index", vxx);
@@ -172,7 +173,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 		}
 		void Offset_Value(CompositionShape cs, IElementExtentContext ieexc, IElementValueContext ievc) {
-			var vxx = MappingSupport.ToVector(
+			var vxx = MappingSupport.OffsetFor(
 				0, ieexc.Component1Axis.Orientation,
 				ievc.Value, ieexc.Component2Axis.Orientation);
 			_trace.Verbose($"Offset {cs.Comment} [0] move:({vxx.X},{vxx.Y})");
@@ -182,6 +183,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 		}
 		#endregion
+		#region IAnimationController
 		public void Prepare(Compositor cc) {
 			#region Offset
 			Vector2KeyFrameAnimation offset = cc.CreateVector2KeyFrameAnimation();
@@ -303,6 +305,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 			return false;
 		}
+		#endregion
+		#region Dispose
 		protected virtual void Dispose(bool disposing) {
 			if (!disposedValue) {
 				if (disposing) {
@@ -322,6 +326,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			Dispose(disposing: true);
 			GC.SuppressFinalize(this);
 		}
+		#endregion
 	}
 	#endregion
 }
