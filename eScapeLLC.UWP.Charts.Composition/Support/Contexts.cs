@@ -320,12 +320,24 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Surface.Children.Add(local);
 			var ccl = new CompositionLayer(local, NextZIndex++);
 			if(cos != null && cos.Length > 0) {
-				(ccl as IChartCompositionLayer).Use(sv => {
+				(ccl as IChartCompositionLayer).Use<ShapeVisual>(sv => {
 					foreach(var co in cos) {
 						sv.Shapes.Add(co);
 					}
 				});
 			}
+			Compositions.Add(ccl);
+			return ccl;
+		}
+		IChartCompositionLayer IChartEnterLeaveContext.CreateLayer(Visual root) {
+			var local = new Canvas() {
+				HorizontalAlignment = HorizontalAlignment.Stretch,
+				VerticalAlignment = VerticalAlignment.Stretch,
+				Width = Surface.ActualWidth,
+				Height = Surface.ActualHeight
+			};
+			Surface.Children.Add(local);
+			var ccl = new CompositionLayer(local, NextZIndex++, root);
 			Compositions.Add(ccl);
 			return ccl;
 		}
