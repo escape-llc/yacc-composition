@@ -139,7 +139,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Obtain access to the underlying <see cref="ShapeVisual"/> for this layer.
 		/// </summary>
 		/// <param name="useit"></param>
-		void Use(Action<ShapeVisual> useit);
+		void Use<V>(Action<V> useit) where V: Visual;
 	}
 	#endregion
 	#region IChartComponentContext
@@ -324,6 +324,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <returns></returns>
 		IChartCompositionLayer CreateLayer(params CompositionShape[] cos);
+		IChartCompositionLayer CreateLayer(Visual root);
 		/// <summary>
 		/// Delete given composition layer (and its children).
 		/// </summary>
