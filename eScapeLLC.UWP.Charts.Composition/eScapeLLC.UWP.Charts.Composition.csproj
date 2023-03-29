@@ -138,6 +138,7 @@
     <Compile Include="Series\ColumnSeries.cs" />
     <Compile Include="Series\ElementFactory.cs" />
     <Compile Include="Series\ElementFactoryDefaults.cs" />
+    <Compile Include="Series\ImageMarkerSeries.cs" />
     <Compile Include="Series\LineSeries.cs" />
     <Compile Include="Series\State.cs" />
     <Compile Include="Series\Style.cs" />
