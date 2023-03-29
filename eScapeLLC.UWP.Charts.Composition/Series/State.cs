@@ -232,7 +232,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// This applies to all series that track a single value with an index.
 	/// </summary>
 	/// <typeparam name="E">Element type.</typeparam>
-	public class ItemState_CategoryValue<E> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where E: CompositionObject {
+	public abstract class ItemState_CategoryValue<E> : ItemStateC2, ISeriesItemValueDouble, ISeriesItemCategoryValue where E: CompositionObject {
 		public E Element { get; protected set; }
 		public ItemState_CategoryValue(int index, double categoryOffset, double c2, int channel = 0) : base(index, c2, channel) {
 			CategoryOffset = categoryOffset;
@@ -264,28 +264,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="el">New element.</param>
 		public virtual void SetElement(E el) { Element?.Dispose(); Element = el; }
 		/// <summary>
-		/// Calculate offset for Column series sprite.
-		/// If the value is negative, adjust the vertical offset by that amount.
+		/// Calculate offset for sprite.
 		/// </summary>
 		/// <param name="cori">Category axis orientation.</param>
 		/// <param name="vori">Value axis orientation.</param>
 		/// <returns>Value to use for the Offset.</returns>
 		/// <exception cref="ArgumentException"></exception>
-		public Vector2 OffsetForColumn(AxisOrientation cori, AxisOrientation vori) {
-			return MappingSupport.OffsetForColumn(Component1, cori, Component2, vori);
-		}
-		/// <summary>
-		/// Calculate offset for Marker series sprite.
-		/// Offsets to the point (C_1,C_2) exactly.
-		/// Sprite MUST be able to keep itself centered based on its current size.
-		/// </summary>
-		/// <param name="cori">Category axis orientation.</param>
-		/// <param name="vori">Value axis orientation.</param>
-		/// <returns>Value to use for the Offset.</returns>
-		/// <exception cref="ArgumentException"></exception>
-		public Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
-			return MappingSupport.OffsetFor(Component1, cori, Component2, vori);
-		}
+		public abstract Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori);
 		#endregion
 	}
 	/// <summary>
@@ -303,11 +288,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public double Component1 { get; private set; }
 		public double Component2 { get; private set; }
 		public override double[] Components() => new double[] { Component1, Component2 };
-		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
-			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
-			return pt;
-		}
 	}
 	/// <summary>
 	/// Suitable for C_1(Index), C_2(Index2), C_3(Value) series, e.g. Heatmap.
@@ -341,11 +321,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public int Channel { get; private set; }
 		double ISeriesItemValueDouble.DoubleValue => Component3;
 		public override double[] Components() => new double[] { Component1, Component2, Component3 };
-		public Vector2 OffsetForMarker(AxisOrientation cori, AxisOrientation vori) {
-			if (cori == vori) throw new ArgumentException($"Orientations are equal {cori}");
-			var pt = MappingSupport.ToVector(Component1, cori, Component2, vori);
-			return pt;
-		}
 	}
 	#endregion
 	#region LayoutSession
