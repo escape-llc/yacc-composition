@@ -13,7 +13,9 @@ using Windows.UI.Xaml.Markup;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class LineSeries_ItemState : ItemState_CategoryValue<CompositionSpriteShape> {
-		public LineSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) {
+		public LineSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
+		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
+			return MappingSupport.OffsetFor(Component1, cori, Component2, vori);
 		}
 	}
 	public class LineSeries : CategoryValueSeries<LineSeries_ItemState>,
@@ -91,7 +93,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var yaxis = CategoryAxis.Orientation == AxisOrientation.Vertical ? CategoryAxis.Reversed : ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, rctx.SeriesArea);
-			Layer.Use(sv => {
+			Layer.Use<ShapeVisual>(sv => {
 				foreach (var shx in sv.Shapes) {
 					shx.TransformMatrix = proj;
 				}
@@ -122,7 +124,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		protected override LineSeries_ItemState CreateState(int index, object item) {
 			throw new System.NotImplementedException();
 		}
-		protected override CompositionShape CreateShape(Compositor cx, LineSeries_ItemState state) {
+		protected virtual CompositionShape CreateShape(Compositor cx, LineSeries_ItemState state) {
 			throw new System.NotImplementedException();
 		}
 		LineSeries_ItemState CreateState(CanvasPathBuilder cpb, int index, bool beginf, object item) {
@@ -156,7 +158,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				model = MatrixSupport.ModelFor(ValueAxis.Minimum, ValueAxis.Maximum, CategoryAxis.Minimum, CategoryAxis.Maximum);
 			}
 			Model = model;
-			Layer.Use(sv => {
+			Layer.Use<ShapeVisual>(sv => {
 				if(sv.Shapes.Count > 0 && sv.Shapes[0] is CompositionContainerShape ccs) {
 					foreach (var shx in ccs.Shapes) shx.TransformMatrix = Model;
 				}
