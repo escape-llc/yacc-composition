@@ -4,9 +4,10 @@
 		"AxisCommon": "Error",
 		"CandlestickSeries": "Error",
 		"CategoryAxis": "Error",
-		"Chart": "Verbose",
-		"ColumnSeries": "Verbose",
-		"CategoryValue_ShapePerItem": "Verbose",
+		"Chart": "Error",
+		"ColumnSeries": "Error",
+		"CategoryValue_ShapePerItem": "Error",
+		"CategoryValue_VisualPerItem": "Verbose",
 		"CategoryValueSeries": "Verbose",
 		"DataSource": "Error",
 		"DataSourceSeries": "Error",
@@ -18,8 +19,8 @@
 		"StackedColumnSeries": "Error",
 		"ValueAxis": "Error",
 		"ValueAxisGrid": "Error",
-		"ValueBand": "Verbose",
+		"ValueBand": "Error",
 		"ValueLabels": "Error",
-		"ValueRule": "Verbose"
+		"ValueRule": "Error"
 	}
 }

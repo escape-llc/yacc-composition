@@ -169,7 +169,7 @@
 				<AppBarButton x:Name="add_and_remove_head" Content="&#x21d0;&#x2395;&#x21d0;" Label="Scroll" Click="Sliding_window_Click"/>
 			</CommandBar.PrimaryCommands>
 		</CommandBar>
-		<yacc:Chart Name="chart" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4" ChartError="Chart_ChartError"
+		<yacc:Chart Name="chart" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Gray" Margin="8" Padding="4,32,4,4" ChartError="Chart_ChartError"
 			RelativePanel.Below="toolbar" RelativePanel.AlignBottomWithPanel="True"
 			RelativePanel.AlignLeftWithPanel="True" RelativePanel.LeftOf="list">
 			<yacc:Chart.DataSources>
@@ -185,6 +185,9 @@
 				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3" Title="Value 3"
 					BarWidth=".32" BarOffset=".66" />
+				<yacc:ImageMarkerSeries Name="MarkerSeries3" DataSourceName="Source1" MarkerWidth=".32" MarkerOffset=".66" MarkerImageUrl="ms-appx:///Assets/yacc_logo.png"
+					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3" Title="Marker 3"
+					ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}" />
 				<!--
 				<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
 					CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value3"
