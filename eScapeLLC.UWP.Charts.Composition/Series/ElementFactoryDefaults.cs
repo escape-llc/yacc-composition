@@ -1,6 +1,7 @@
 ﻿using eScape.Core;
 using System;
 using System.Numerics;
+using Windows.Foundation.Metadata;
 using Windows.UI.Composition;
 using Windows.UI.Xaml.Media;
 
@@ -69,6 +70,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 	/// <summary>
 	/// Default factory for creating rounded rectangle sprites.
 	/// </summary>
+	[Deprecated("Do Not Use Compositor.CreateRectangleGeometry", DeprecationType.Remove, 0)]
 	public class RectangleGeometryFactory : FillAndStrokeGeometry, IElementFactory {
 		public RectangleGeometryFactory() { }
 		/// <summary>
