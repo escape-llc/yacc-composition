@@ -57,6 +57,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 			return false;
 		}
+		public bool Enter(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null) {
+			throw new NotImplementedException();
+		}
 		public bool Exit(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null) {
 			if(co is CompositionShape cs) {
 				ssc.Remove(cs);
@@ -64,6 +67,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 				return true;
 			}
 			return false;
+		}
+		public bool Exit(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null) {
+			throw new NotImplementedException();
 		}
 		public void InitTransform(Matrix3x2 model) { }
 		public bool Offset(IElementFactoryContext iefc, CompositionObject co, Action<CompositionObject> cb = null) {
@@ -97,15 +103,25 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		public int DurationExit { get; set; } = AnimationFactory.DEFAULT;
 		#endregion
 		#region data
+		private bool disposedValue;
+		ImplicitAnimationCollection iac;
+		#region composition shape animations
 		Vector2KeyFrameAnimation offset;
 		ExpressionAnimation xform;
-		ImplicitAnimationCollection iac;
 		Vector2KeyFrameAnimation enter;
 		Vector2KeyFrameAnimation exit;
+		#endregion
+		#region transform matrix
 		CompositionPropertySet axisprops;
 		Vector3KeyFrameAnimation axis1;
 		Vector3KeyFrameAnimation axis2;
-		private bool disposedValue;
+		#endregion
+		#region Visual animations
+		Vector3KeyFrameAnimation offset_vx;
+		ExpressionAnimation xform_vx;
+		//Vector3KeyFrameAnimation enter_vx;
+		Vector3KeyFrameAnimation exit_vx;
+		#endregion
 		#endregion
 		#region helpers
 		/// <summary>
@@ -118,7 +134,14 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			double c1 = iedo.Transition == ItemTransition.Head
 				? ieec.CategoryAxis.Minimum - 2 + ieec.Item.CategoryOffset
 				: ieec.CategoryAxis.Maximum + 2 + ieec.Item.CategoryOffset;
-			return MappingSupport.OffsetForColumn(c1, ieec.CategoryAxis.Orientation, ieec.Item.DataValue, ieec.ValueAxis.Orientation);
+			var vxx = ieec.Mode == CategoryValueMode.Column
+				? MappingSupport.OffsetForColumn(
+					c1, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation)
+				: MappingSupport.OffsetFor(
+					c1, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation);
+			return vxx;
 		}
 		void Enter_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
 			var enter = Spawn(ieec, iedo);
@@ -138,6 +161,25 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 			// connect to expression for TransformMatrix
 			cs.StartAnimation(xform.Target, xform);
+		}
+		void Enter_CategoryValue(VisualCollection ssc, Visual cs, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<Visual> cb) {
+			var enter = new Vector3(Spawn(ieec, iedo), 0);
+			_trace.Verbose($"Enter {cs.Comment} {iedo.Transition} spawn:({enter.X},{enter.Y})");
+			// Enter VT at spawn point
+			cs.Offset = enter;
+			if (iedo.Transition == ItemTransition.Head) {
+				ssc.InsertAtTop(cs);
+			}
+			else {
+				ssc.InsertAtBottom(cs);
+			}
+			cb?.Invoke(cs);
+			if (this.enter.Target != nameof(CompositionShape.Offset)) {
+				// if it's Offset we expect a call for that next, otherwise start this one
+				//cs.StartAnimation(this.enter_vx.Target, this.enter_vx);
+			}
+			// connect to expression for TransformMatrix
+			cs.StartAnimation(xform_vx.Target, xform_vx);
 		}
 		void Exit_CategoryValue(CompositionShapeCollection ssc, CompositionShape cs, IElementFactoryContext iefc, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<CompositionObject> cb) {
 			CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
@@ -162,14 +204,56 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			cs.StartAnimation(this.exit.Target, this.exit);
 			ccb.End();
 		}
+		void Exit_CategoryValue(VisualCollection ssc, Visual cs, IElementFactoryContext iefc, IElementCategoryValueContext ieec, IElementDataOperation iedo, Action<Visual> cb) {
+			CompositionScopedBatch ccb = iefc.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+			ccb.Comment = $"ScopedBatch_{cs.Comment}";
+			ccb.Completed += (sender, cbcea) => {
+				try {
+					// needed?
+					cs.StopAnimation(xform_vx.Target);
+					ssc.Remove(cs);
+					cb?.Invoke(cs);
+				}
+				catch (Exception ex) {
+					_trace.Error($"ccb.Completed: {ex}");
+				}
+				finally {
+					ccb.Dispose();
+				}
+			};
+			var exit = new Vector3(Spawn(ieec, iedo), 0);
+			_trace.Verbose($"Exit {cs.Comment} {iedo.Transition} spawn:({exit.X},{exit.Y})");
+			this.exit_vx.SetVector3Parameter("Index", exit);
+			cs.StartAnimation(this.exit_vx.Target, this.exit_vx);
+			ccb.End();
+		}
 		void Offset_CategoryValue(CompositionShape cs, IElementCategoryValueContext ieec) {
-			var vxx = MappingSupport.OffsetForColumn(
-				ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
-				ieec.Item.DataValue, ieec.ValueAxis.Orientation);
+			var vxx = ieec.Mode == CategoryValueMode.Column
+				? MappingSupport.OffsetForColumn(
+					ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation)
+				: MappingSupport.OffsetFor(
+					ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation);
 			_trace.Verbose($"Offset {cs.Comment} [{ieec.Item.CategoryValue}] move:({vxx.X},{vxx.Y})");
 			if (vxx != cs.Offset) {
 				offset.SetVector2Parameter("Index", vxx);
 				cs.StartAnimation(offset.Target, offset);
+			}
+		}
+		void Offset_CategoryValue(Visual vx, IElementCategoryValueContext ieec) {
+			var vxx = ieec.Mode == CategoryValueMode.Column
+				? MappingSupport.OffsetForColumn(
+					ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation)
+				: MappingSupport.OffsetFor(
+					ieec.Item.CategoryValue + ieec.Item.CategoryOffset, ieec.CategoryAxis.Orientation,
+					ieec.Item.DataValue, ieec.ValueAxis.Orientation);
+			_trace.Verbose($"Offset {vx.Comment} [{ieec.Item.CategoryValue}] move:({vxx.X},{vxx.Y})");
+			var vxx3 = new Vector3(vxx, 0);
+			if (vxx3 != vx.Offset) {
+				offset_vx.SetVector3Parameter("Index", vxx3);
+				vx.StartAnimation(offset_vx.Target, offset_vx);
 			}
 		}
 		void Offset_Value(CompositionShape cs, IElementExtentContext ieexc, IElementValueContext ievc) {
@@ -185,7 +269,7 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		#endregion
 		#region IAnimationController
 		public void Prepare(Compositor cc) {
-			#region Offset
+			#region Offset (Vector2)
 			Vector2KeyFrameAnimation offset = cc.CreateVector2KeyFrameAnimation();
 			offset.InsertExpressionKeyFrame(1f, "Index");
 			offset.Duration = TimeSpan.FromMilliseconds(DurationShift);
@@ -193,6 +277,15 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			offset.Target = nameof(CompositionShape.Offset);
 			offset.Comment = "Offset";
 			this.offset = offset;
+			#endregion
+			#region Visual.Offset (Vector3)
+			Vector3KeyFrameAnimation offset_vx = cc.CreateVector3KeyFrameAnimation();
+			offset_vx.InsertExpressionKeyFrame(1f, "Index");
+			offset_vx.Duration = TimeSpan.FromMilliseconds(DurationShift);
+			offset_vx.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+			offset_vx.Target = nameof(Visual.Offset);
+			offset_vx.Comment = "Visual.Offset";
+			this.offset_vx = offset_vx;
 			#endregion
 			#region Enter
 			var enter = cc.CreateVector2KeyFrameAnimation();
@@ -210,7 +303,16 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			exit.Comment = "Exit";
 			this.exit = exit;
 			#endregion
+			#region Visual.Exit
+			var exit_vx = cc.CreateVector3KeyFrameAnimation();
+			exit_vx.InsertExpressionKeyFrame(1f, "Index");
+			exit_vx.Duration = TimeSpan.FromMilliseconds(DurationExit);
+			exit_vx.Target = nameof(Visual.Offset);
+			exit_vx.Comment = "Visual.Exit";
+			this.exit_vx = exit_vx;
+			#endregion
 			#region Transform
+			#region axis1
 			// axis1 has a separate keyframe animation to drive it
 			var axis1 = cc.CreateVector3KeyFrameAnimation();
 			axis1.InsertExpressionKeyFrame(1f, "Component1");
@@ -219,6 +321,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			axis1.Target = "Component1";
 			axis1.Comment = "Component1";
 			this.axis1 = axis1;
+			#endregion
+			#region axis2
 			// axis2 has a separate keyframe animation to drive it
 			var axis2 = cc.CreateVector3KeyFrameAnimation();
 			axis2.InsertExpressionKeyFrame(1f, "Component2");
@@ -227,6 +331,8 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			axis2.Target = "Component2";
 			axis2.Comment = "Component2";
 			this.axis2 = axis2;
+			#endregion
+			#region axisprops
 			// axisprops holds the animated values from axis1/axis2
 			// this holds the axis animation targets
 			var axisprops = cc.CreatePropertySet();
@@ -234,7 +340,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			axisprops.InsertVector3("Component1", new Vector3(1, 0, 0));
 			axisprops.InsertVector3("Component2", new Vector3(0, 1, 0));
 			this.axisprops = axisprops;
-			// xform is an expression animating the Matrix3x2 based on the axisprops
+			#endregion
+			#region xform 3x2
+			// xform is an expression animating the CompositionShape Matrix3x2 based on the axisprops
 			// entering components are connected to this animation
 			var xform = cc.CreateExpressionAnimation();
 			xform.Expression = "Matrix3x2(props.Component1.X,props.Component2.X,props.Component1.Y,props.Component2.Y,props.Component1.Z,props.Component2.Z)";
@@ -242,6 +350,17 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			xform.Target = nameof(CompositionShape.TransformMatrix);
 			xform.Comment = "TransformMatrix";
 			this.xform = xform;
+			#endregion
+			#region xform_vx 4x4
+			// xform_vx is an expression animating the Visual Matrix4x4 based on the axisprops
+			// entering components are connected to this animation
+			var xform_vx = cc.CreateExpressionAnimation();
+			xform_vx.Expression = "Matrix4x4(Matrix3x2(props.Component1.X,props.Component2.X,props.Component1.Y,props.Component2.Y,props.Component1.Z,props.Component2.Z))";
+			xform_vx.SetExpressionReferenceParameter("props", this.axisprops);
+			xform_vx.Target = nameof(Visual.TransformMatrix);
+			xform_vx.Comment = "Visual.TransformMatrix";
+			this.xform_vx = xform_vx;
+			#endregion
 			#endregion
 			#region Implicit
 			var iac = cc.CreateImplicitAnimationCollection();
@@ -273,9 +392,23 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			}
 			return false;
 		}
+		public bool Enter(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null) {
+			if (iefc is IElementCategoryValueContext ieec && iefc is IElementDataOperation iedo) {
+				Enter_CategoryValue(ssc, co, ieec, iedo, cb);
+				return true;
+			}
+			return false;
+		}
 		public bool Exit(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null) {
 			if (co is CompositionShape cs2 && iefc is IElementCategoryValueContext ieec2 && iefc is IElementDataOperation iedo2) {
 				Exit_CategoryValue(ssc, cs2, iefc, ieec2, iedo2, cb);
+				return true;
+			}
+			return false;
+		}
+		public bool Exit(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null) {
+			if (iefc is IElementCategoryValueContext ieec2 && iefc is IElementDataOperation iedo2) {
+				Exit_CategoryValue(ssc, co, iefc, ieec2, iedo2, cb);
 				return true;
 			}
 			return false;
@@ -288,20 +421,30 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 			axisprops.StartAnimation(axis2.Target, axis2);
 		}
 		public bool Offset(IElementFactoryContext iefc, CompositionObject co, Action<CompositionObject> cb = null) {
-			if (co is CompositionShape cs) {
-				switch (iefc) {
-					case IElementCategoryValueContext ieec:
-						Offset_CategoryValue(cs, ieec);
-						cb?.Invoke(co);
-						return true;
-					case IElementValueContext ievc:
-						if (iefc is IElementExtentContext ieexc) {
-							Offset_Value(cs, ieexc, ievc);
+			switch(co) {
+				case CompositionShape cs:
+					switch (iefc) {
+						case IElementCategoryValueContext ieec:
+							Offset_CategoryValue(cs, ieec);
 							cb?.Invoke(co);
 							return true;
-						}
-						break;
-				}
+						case IElementValueContext ievc:
+							if (iefc is IElementExtentContext ieexc) {
+								Offset_Value(cs, ieexc, ievc);
+								cb?.Invoke(co);
+								return true;
+							}
+							break;
+					}
+					break;
+				case Visual vx:
+					switch(iefc) {
+						case IElementCategoryValueContext ieec:
+							Offset_CategoryValue(vx, ieec);
+							cb?.Invoke(co);
+							return true;
+					}
+					break;
 			}
 			return false;
 		}
@@ -318,6 +461,9 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 					exit?.Dispose(); exit = null;
 					enter?.Dispose(); enter = null;
 					iac?.Dispose(); iac = null;
+					offset_vx?.Dispose(); offset_vx = null;
+					exit_vx?.Dispose(); exit_vx = null;
+					xform_vx?.Dispose(); xform_vx = null;
 				}
 				disposedValue = true;
 			}
