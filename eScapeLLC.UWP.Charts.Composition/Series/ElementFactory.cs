@@ -74,6 +74,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		Vector2 End { get; }
 	}
+	public enum CategoryValueMode {
+		/// <summary>
+		/// Position at coordinates.
+		/// </summary>
+		Marker = 0,
+		/// <summary>
+		/// Position value offset to Min(0,Value).
+		/// </summary>
+		Column,
+		/// <summary>
+		/// Position entire path.
+		/// </summary>
+		Path,
+	}
 	/// <summary>
 	/// Additional information about the <see cref="ISeriesItemCategoryValue"/> for this sprite.
 	/// </summary>
@@ -90,6 +104,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// The item.
 		/// </summary>
 		ISeriesItemCategoryValue Item { get; }
+		/// <summary>
+		/// How to calculate offset.
+		/// </summary>
+		CategoryValueMode Mode { get; }
+		/// <summary>
+		/// Provide offset for given coordinates.
+		/// </summary>
+		/// <param name="category">C1 value.</param>
+		/// <param name="value">C2 value.</param>
+		/// <returns></returns>
+		Vector2 OffsetFor(double category, double value);
 	}
 	/// <summary>
 	/// Additional information about the path to use in the sprite.
@@ -133,12 +158,19 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		public Axis_Extents ValueAxis { get; private set; }
 		public ISeriesItemCategoryValue Item { get; private set; }
 		public ItemTransition Transition { get; private set; }
-		public CategoryValueContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition transition) {
+		public CategoryValueMode Mode { get; private set; }
+		public CategoryValueContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition transition, CategoryValueMode mode) {
 			Compositor = cx;
 			Item = isicv;
 			CategoryAxis = ca;
 			ValueAxis = va;
 			Transition = transition;
+			Mode = mode;
+		}
+		public Vector2 OffsetFor(double category, double value) {
+			return Mode == CategoryValueMode.Column
+				? MappingSupport.OffsetForColumn(category, CategoryAxis.Orientation, value, ValueAxis.Orientation)
+				: MappingSupport.OffsetFor(category, CategoryAxis.Orientation, value, ValueAxis.Orientation);
 		}
 	}
 	#endregion
@@ -219,7 +251,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Context for creating paths.
 	/// </summary>
 	public class PathGeometryContext : CategoryValueContext, IElementCompositionPath {
-		public PathGeometryContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition it, CompositionPath path) : base(cx, isicv, ca, va, it) {
+		public PathGeometryContext(Compositor cx, ISeriesItemCategoryValue isicv, Axis_Extents ca, Axis_Extents va, ItemTransition it, CompositionPath path) : base(cx, isicv, ca, va, it, CategoryValueMode.Path) {
 			Path = path;
 		}
 		/// <summary>
@@ -273,13 +305,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Add to VT and start the Enter animation.
 		/// Connect TransformMatrix expression animation.
 		/// </summary>
-		/// <param name="key">Enter,Exit.</param>
 		/// <param name="iefc">Element context.</param>
 		/// <param name="ssc">Container collection to manage VT.</param>
 		/// <param name="co">Object to animate.</param>
 		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters the VT.</param>
 		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
 		bool Enter(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null);
+		/// <summary>
+		/// Overload for <see cref="Visual"/>.
+		/// </summary>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="ssc">Container collection to manage VT.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="cb">Callback to act on the <paramref name="co"/> after it enters the VT.</param>
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool Enter(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null);
 		/// <summary>
 		/// Start the Exit animation and remove from VT when complete.
 		/// Disconnect TransformMatrix expression animation.
@@ -290,6 +330,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="cb">Callback to act on the <paramref name="co"/> after it exits the VT.</param>
 		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
 		bool Exit(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null);
+		/// <summary>
+		/// Overload for <see cref="Visual"/>.
+		/// </summary>
+		/// <param name="iefc">Element context.</param>
+		/// <param name="co">Object to animate.</param>
+		/// <param name="ssc">Container collection to manage VT.</param>
+		/// <param name="cb">Callback to act on the <paramref name="co"/> after it exits the VT.</param>
+		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
+		bool Exit(IElementFactoryContext iefc, Visual co, VisualCollection ssc, Action<Visual> cb = null);
 		/// <summary>
 		/// Start the Offset animation.
 		/// </summary>
