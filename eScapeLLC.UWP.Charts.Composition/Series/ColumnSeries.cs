@@ -18,6 +18,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape> {
 		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
+		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
+			return MappingSupport.OffsetForColumn(Component1, cori, Component2, vori);
+		}
 	}
 	/// <summary>
 	/// CompositionShapeContainer(proj) -> .Shapes [CompositionSpriteShape(model) ...]
@@ -134,7 +137,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="item">Source item.</param>
 		/// <param name="it">Transition info.</param>
 		/// <returns>New instance.</returns>
-		protected override IElementFactoryContext CreateAnimateContext(ColumnSeries_ItemState item, ItemTransition it) => new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it);
+		protected override IElementFactoryContext CreateAnimateContext(ColumnSeries_ItemState item, ItemTransition it) => new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it, CategoryValueMode.Column);
 		#endregion
 		#region render pipeline event extensions
 		/// <summary>
