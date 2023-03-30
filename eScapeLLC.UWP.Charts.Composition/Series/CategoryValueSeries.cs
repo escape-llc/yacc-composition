@@ -1,5 +1,6 @@
 ﻿using eScape.Core;
 using eScape.Host;
+using eScapeLLC.UWP.Charts.Composition.Data;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
