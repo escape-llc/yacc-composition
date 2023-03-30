@@ -2,6 +2,7 @@
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
 using Windows.Foundation;
@@ -10,6 +11,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Media;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	#region _ItemState
 	/// <summary>
 	/// Item state.
 	/// </summary>
@@ -18,11 +20,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		Vector2KeyFrameAnimation Position { get; set; }
 		ExpressionAnimation Offset { get; set; }
 		ExpressionAnimation Size { get; set; }
+		AxisOrientation Component1Axis { get; set; } = AxisOrientation.Horizontal;
+		AxisOrientation Component2Axis { get; set; } = AxisOrientation.Vertical;
 		public ImageMarkerSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
-		public void CreateAnimations(Compositor cx, CompositionPropertySet props) {
-			var vx = MappingSupport.ToVector(Component1, AxisOrientation.Horizontal, Component2, AxisOrientation.Vertical);
+		public void CreateAnimations(Compositor cx, CompositionPropertySet props, AxisOrientation c1a, AxisOrientation c2a) {
+			Component1Axis = c1a;
+			Component2Axis = c2a;
+			var vx = MappingSupport.ToVector(Component1, Component1Axis, Component2, Component2Axis);
 			Position = cx.CreateVector2KeyFrameAnimation();
 			Position.Comment = $"Marker[{Index}]_Position";
+			Position.StopBehavior = AnimationStopBehavior.SetToFinalValue;
 			Position.InsertExpressionKeyFrame(1f, "Position");
 			Position.SetVector2Parameter("Position", vx);
 			Position.Target = "Position";
@@ -50,52 +57,75 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if(Element != null) {
 				Element.StopAnimation(Size.Target);
 				Element.StopAnimation(Offset.Target);
+				PropertySet.StopAnimation(Position.Target);
 			}
 			base.SetElement(el);
-			if(Element != null) {
-				Element.StartAnimation(Offset.Target, Offset);
-				Element.StartAnimation(Size.Target, Size);
-			}
 		}
 		public override void ResetElement() {
 			if(Element != null) {
 				Element.StopAnimation(Size.Target);
 				Element.StopAnimation(Offset.Target);
+				PropertySet.StopAnimation(Position.Target);
 			}
 			base.ResetElement();
 		}
 		/// <summary>
 		/// Start animating to the current position.
 		/// </summary>
-		public Vector2 AnimatePosition() {
-			var vx = MappingSupport.ToVector(Component1, AxisOrientation.Horizontal, Component2, AxisOrientation.Vertical);
+		public Vector2 UpdateOffset() {
+			var vx = OffsetFor(Component1Axis, Component2Axis);
 			Position.SetVector2Parameter("Position", vx);
 			PropertySet.StartAnimation(Position.Target, Position);
 			return vx;
 		}
 		/// <summary>
-		/// Animate from given location to current position.
+		/// Initailize animation position to given position.
+		/// Expects subsequent call to <see cref="UpdateOffset"/> with "final" position.
 		/// </summary>
 		/// <param name="enter">Initial position.</param>
-		public void AnimateFrom(Vector2 enter) {
-			// start at entry point
+		/// <param name="it">Use for list operations.</param>
+		/// <param name="vsc">Target collection.</param>
+		public void Enter(Vector2 enter, ItemTransition it, VisualCollection vsc) {
+			//Element.Offset = new Vector3(enter, 0);
 			PropertySet.InsertVector2("Position", enter);
-			// target is current position
-			var vx = MappingSupport.ToVector(Component1, AxisOrientation.Horizontal, Component2, AxisOrientation.Vertical);
-			Position.SetVector2Parameter("Position", vx);
-			PropertySet.StartAnimation(Position.Target, Position);
+			Position.SetVector2Parameter("Position", enter);
+			Element.StartAnimation(Offset.Target, Offset);
+			Element.StartAnimation(Size.Target, Size);
+			if (it == ItemTransition.Head) {
+				vsc.InsertAtTop(Element);
+			}
+			else {
+				vsc.InsertAtBottom(Element);
+			}
 		}
 		/// <summary>
-		/// Animate from current position to given position.
+		/// Animate from current position to given position, then remove from Visual Tree.
 		/// </summary>
 		/// <param name="exit">Exit position.</param>
-		public void AnimateTo(Vector2 exit) {
+		/// <param name="vsc">Target collection.</param>
+		public void Exit(Vector2 exit, VisualCollection ssc) {
+			CompositionScopedBatch ccb = Element.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+			ccb.Comment = $"ScopedBatch_{Element.Comment}";
+			ccb.Completed += (sender, cbcea) => {
+				try {
+					ssc.Remove(Element);
+					ResetElement();
+				}
+				catch(Exception ex) {
+					ImageMarkerSeries._trace.Error($"ccb[{Index}].Completed: {ex}");
+				}
+				finally {
+					ccb.Dispose();
+				}
+			};
 			Position.SetVector2Parameter("Position", exit);
 			PropertySet.StartAnimation(Position.Target, Position);
+			ccb.End();
 		}
 	}
+	#endregion
 	public class ImageMarkerSeries : CategoryValue_VisualPerItem<ImageMarkerSeries_ItemState>, IRequireEnterLeave, IConsumer<Phase_Transforms> {
-		static readonly LogTools.Flag _trace = LogTools.Add("ImageMarkerSeries", LogTools.Level.Error);
+		internal static readonly LogTools.Flag _trace = LogTools.Add("ImageMarkerSeries", LogTools.Level.Error);
 		#region properties
 		public string MarkerImageUrl { get; set; }
 		public double MarkerOffset { get; set; }
@@ -114,13 +144,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// This will be (0,0) until surface is loaded.
 		/// </summary>
 		protected Vector2 MarkerSize { get; set; }
-		#endregion
-		#region helpers
+		/// <summary>
+		/// Tracks current projection matrix to trigger animations.
+		/// </summary>
+		protected Matrix3x2 LastProj { get; set; }
 		CompositionPropertySet PropertySet { get; set; }
 		Vector3KeyFrameAnimation ModelX { get; set; }
 		Vector3KeyFrameAnimation ModelY { get; set; }
 		Vector3KeyFrameAnimation ProjX { get; set; }
 		Vector3KeyFrameAnimation ProjY { get; set; }
+		#endregion
+		#region helpers
 		protected void CreateAnimations(Compositor cx) {
 			PropertySet = cx.CreatePropertySet();
 			PropertySet.Comment = $"{Name}_global";
@@ -135,24 +169,28 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ModelX.InsertExpressionKeyFrame(1f, "Index");
 			ModelX.SetVector3Parameter("Index", new Vector3(1, 0, 0));
 			ModelX.Duration = TimeSpan.FromMilliseconds(300);
+			ModelX.StopBehavior = AnimationStopBehavior.SetToFinalValue;
 			ModelX.Target = "ModelX";
 			ModelY = cx.CreateVector3KeyFrameAnimation();
 			ModelY.Comment = $"{Name}_modelY";
 			ModelY.InsertExpressionKeyFrame(1f, "Index");
 			ModelY.SetVector3Parameter("Index", new Vector3(0, 1, 0));
 			ModelY.Duration = TimeSpan.FromMilliseconds(300);
+			ModelY.StopBehavior = AnimationStopBehavior.SetToFinalValue;
 			ModelY.Target = "ModelY";
 			ProjX = cx.CreateVector3KeyFrameAnimation();
 			ProjX.Comment = $"{Name}_projX";
 			ProjX.InsertExpressionKeyFrame(1f, "Index");
 			ProjX.SetVector3Parameter("Index", new Vector3(1, 0, 0));
 			ProjX.Duration = TimeSpan.FromMilliseconds(300);
+			ProjX.StopBehavior = AnimationStopBehavior.SetToFinalValue;
 			ProjX.Target = "ProjX";
 			ProjY = cx.CreateVector3KeyFrameAnimation();
 			ProjY.Comment = $"{Name}_projY";
 			ProjY.InsertExpressionKeyFrame(1f, "Index");
 			ProjY.SetVector3Parameter("Index", new Vector3(0, 1, 0));
 			ProjY.Duration = TimeSpan.FromMilliseconds(300);
+			ProjY.StopBehavior = AnimationStopBehavior.SetToFinalValue;
 			ProjY.Target = "ProjY";
 		}
 		protected void DisposeAnimations() {
@@ -167,18 +205,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ProjY.Dispose();
 			ProjY = null;
 		}
-		#endregion
-		#region extensions
-		protected override void Entering(ImageMarkerSeries_ItemState item, ItemTransition it) {
-			if (item == null || item.Element == null) return;
-			if (it == ItemTransition.Head) {
-				Container.Children.InsertAtTop(item.Element);
-			}
-			else {
-				Container.Children.InsertAtBottom(item.Element);
-			}
-			item.AnimateFrom(Spawn(item, it));
-		}
 		Vector2 Spawn(ImageMarkerSeries_ItemState item, ItemTransition it) {
 			double c1 = it == ItemTransition.Head
 				? CategoryAxis.Minimum - 2 + item.CategoryOffset
@@ -188,16 +214,20 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					item.DataValue, ValueAxis.Orientation);
 			return spawn;
 		}
+		#endregion
+		#region extensions
+		protected override void Entering(ImageMarkerSeries_ItemState item, ItemTransition it) {
+			if (item == null || item.Element == null) return;
+			item.Enter(Spawn(item, it), it, Container.Children);
+		}
 		protected override void Exiting(ImageMarkerSeries_ItemState item, ItemTransition it) {
 			if (item == null || item.Element == null) return;
-			//item.AnimateTo(Spawn(item, it));
-			Container.Children.Remove(item.Element);
-			item.ResetElement();
+			item.Exit(Spawn(item, it), Container.Children);
 		}
 		protected override void UpdateOffset(ImageMarkerSeries_ItemState item) {
-			if (item.Element == null) return;
-			var offset = item.AnimatePosition();
-			_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} from:{item.Element.Offset.X},{item.Element.Offset.Y} to:{offset.X},{offset.Y}");
+			if (item == null || item.Element == null) return;
+			var to = item.UpdateOffset();
+			_trace.Verbose($"{Name}[{item.Index}] update-offset val:{item.DataValue} to:{to.X},{to.Y}");
 		}
 		protected override void ComponentExtents() {
 			if (Pending == null) return;
@@ -228,15 +258,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				_trace.Verbose($"{Name}.image.LoadCompleted {args.Status} ds:{sender.DecodedSize} ns:{sender.NaturalSize}");
 				if (args.Status == LoadedImageSourceLoadStatus.Success) {
 					Size decodedSize = sender.DecodedSize;
-					// TODO need this to be the calculated size
 					MarkerSize = new Vector2((float)decodedSize.Width, (float)decodedSize.Height);
 					PropertySet.InsertScalar("AspectRatio", (float)decodedSize.Height / (float)decodedSize.Width);
-					// ensure all the current items get the size
-					foreach (ImageMarkerSeries_ItemState state in ItemState) {
-						if(state != null && state.Element != null) {
-							//state.SetMarkerSize((float)decodedSize.Width, (float)decodedSize.Height);
-						}
-					}
 				}
 			};
 			var brush = cx.CreateSurfaceBrush();
@@ -246,13 +269,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		protected override Visual CreateVisual(Compositor cx, ImageMarkerSeries_ItemState state) {
 			EnsureMarker(cx);
-			state.CreateAnimations(cx, PropertySet);
+			state.CreateAnimations(cx, PropertySet, CategoryAxis.Orientation, ValueAxis.Orientation);
 			var (xx, yy) = MappingSupport.MapComponents(state.Component1, CategoryAxis.Orientation, state.Component2, ValueAxis.Orientation);
 			var element = cx.CreateSpriteVisual();
 			element.Brush = Marker;
 			element.Comment = $"{Name}[{state.Index}]";
-			//element.Size = MarkerSize;
-			//element.Offset = new Vector3((float)xx, (float)yy, 0);
 			element.AnchorPoint = new Vector2(0, .5f);
 			_trace.Verbose($"{Name}[{state.Index}] create-shape val:{state.DataValue} pt:{xx:F2},{yy:F2}");
 			return element;
@@ -287,6 +308,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (model == Model) return;
 			if (!didInitTransform) {
 				//Animate?.InitTransform(model);
+				PropertySet.InsertVector3("ModelX", new Vector3(model.M11, model.M21, model.M31));
+				PropertySet.InsertVector3("ModelY", new Vector3(model.M12, model.M22, model.M32));
 				didInitTransform = true;
 			}
 			Model = model;
@@ -321,7 +344,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var yaxis = CategoryAxis.Orientation == AxisOrientation.Vertical ? CategoryAxis.Reversed : ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, rctx.SeriesArea);
-			// detect change before animating
 			if (proj == LastProj) return;
 			LastProj = proj;
 			ProjX.SetVector3Parameter("Index", new Vector3(proj.M11, proj.M21, proj.M31));
@@ -329,7 +351,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			PropertySet.StartAnimation(ProjX.Target, ProjX);
 			PropertySet.StartAnimation(ProjY.Target, ProjY);
 		}
-		Matrix3x2 LastProj { get; set; }
 		#endregion
 		#region IRequireEnterLeave
 		public void Enter(IChartEnterLeaveContext icelc) {
