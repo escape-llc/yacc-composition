@@ -1,7 +1,9 @@
-﻿using System;
+﻿using eScape.Core;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
+using System.Xml.Linq;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -209,6 +211,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// </summary>
 	public class CompositionLayer : IChartLayerCore, IChartCompositionLayer {
 		#region data
+		static readonly LogTools.Flag _trace = LogTools.Add("CompositionLayer", LogTools.Level.Error);
 		/// <summary>
 		/// Access to the <see cref="Canvas"/>.
 		/// </summary>
@@ -221,36 +224,36 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="canvas">Target canvas.</param>
 		public CompositionLayer(Canvas canvas, int zindex) {
 			this.canvas = canvas;
-			canvas.SetValue(Canvas.ZIndexProperty, zindex);
 			var cc = Window.Current.Compositor;
 			var root = cc.CreateShapeVisual();
-			root.Size = new Vector2((float)canvas.ActualWidth, (float)canvas.ActualHeight);
-			ElementCompositionPreview.SetElementChildVisual(canvas, root);
+			Configure(canvas, zindex, root);
 		}
 		public CompositionLayer(Canvas canvas, int zindex, Visual root) {
 			this.canvas = canvas;
+			Configure(canvas, zindex, root);
+		}
+		protected void Configure(Canvas canvas, int zindex, Visual root) {
+			canvas.Name = $"CompositionLayer_{zindex}";
 			canvas.SetValue(Canvas.ZIndexProperty, zindex);
 			root.Size = new Vector2((float)canvas.ActualWidth, (float)canvas.ActualHeight);
 			ElementCompositionPreview.SetElementChildVisual(canvas, root);
 		}
 		public void SizeChanged(SizeChangedEventArgs e) {
-			var shape = ElementCompositionPreview.GetElementChildVisual(canvas) as Visual;
-			if (shape == null) return;
-			shape.Size = new Vector2((float)e.NewSize.Width, (float)e.NewSize.Height);
-		}
-		private void Local_SizeChanged(object sender, SizeChangedEventArgs e) {
-			var shape = ElementCompositionPreview.GetElementChildVisual(canvas) as Visual;
-			if (shape == null) return;
-			shape.Size = new Vector2((float)canvas.ActualWidth, (float)canvas.ActualHeight);
+			var vis = ElementCompositionPreview.GetElementChildVisual(canvas);
+			if (vis == null) return;
+			var sz = vis.Size;
+			canvas.Width = e.NewSize.Width; canvas.Height = e.NewSize.Height;
+			canvas.Clip = new Windows.UI.Xaml.Media.RectangleGeometry() { Rect = new Rect(new Point(0,0),e.NewSize) };
+			_trace.Verbose($"SizeChanged {canvas.Name} ns:{e.NewSize} vis:{sz.X},{sz.Y} canv:{canvas.ActualSize}");
+			vis.Size = new Vector2((float)e.NewSize.Width, (float)e.NewSize.Height);
 		}
 		void IChartCompositionLayer.Use<V>(Action<V> useit) {
-			var shape = ElementCompositionPreview.GetElementChildVisual(canvas) as Visual;
-			if (shape == null) return;
-			useit(shape as V);
+			var vis = ElementCompositionPreview.GetElementChildVisual(canvas);
+			if (vis == null) return;
+			useit(vis as V);
 		}
 		void IChartLayerCore.Clear() {
-			var shape = ElementCompositionPreview.GetElementChildVisual(canvas) as ShapeVisual;
-			if (shape == null) return;
+			if (!(ElementCompositionPreview.GetElementChildVisual(canvas) is ShapeVisual shape)) return;
 			shape.Shapes.Clear();
 		}
 		void IChartLayerCore.Layout(Rect target) {
