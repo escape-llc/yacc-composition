@@ -310,13 +310,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			icl.Clear();
 			Layers.Remove(icl);
 		}
-		IChartCompositionLayer IChartEnterLeaveContext.CreateLayer(params CompositionShape[] cos) {
+		Canvas CreateCanvas() {
 			var local = new Canvas() {
 				HorizontalAlignment = HorizontalAlignment.Stretch,
 				VerticalAlignment = VerticalAlignment.Stretch,
 				Width = Surface.ActualWidth,
-				Height = Surface.ActualHeight
+				Height = Surface.ActualHeight,
 			};
+			return local;
+		}
+		IChartCompositionLayer IChartEnterLeaveContext.CreateLayer(params CompositionShape[] cos) {
+			var local = CreateCanvas();
 			Surface.Children.Add(local);
 			var ccl = new CompositionLayer(local, NextZIndex++);
 			if(cos != null && cos.Length > 0) {
@@ -330,22 +334,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return ccl;
 		}
 		IChartCompositionLayer IChartEnterLeaveContext.CreateLayer(Visual root) {
-			var local = new Canvas() {
-				HorizontalAlignment = HorizontalAlignment.Stretch,
-				VerticalAlignment = VerticalAlignment.Stretch,
-				Width = Surface.ActualWidth,
-				Height = Surface.ActualHeight
-			};
+			var local = CreateCanvas();
 			Surface.Children.Add(local);
 			var ccl = new CompositionLayer(local, NextZIndex++, root);
 			Compositions.Add(ccl);
 			return ccl;
 		}
 		void IChartEnterLeaveContext.DeleteLayer(IChartCompositionLayer icl) {
-			var local = (icl as CompositionLayer).canvas;
-			Surface.Children.Remove(local);
 			icl.Clear();
 			Compositions.Remove(icl);
+			var local = (icl as CompositionLayer).canvas;
+			Surface.Children.Remove(local);
 		}
 		#endregion
 		#region IChartErrorInfo
