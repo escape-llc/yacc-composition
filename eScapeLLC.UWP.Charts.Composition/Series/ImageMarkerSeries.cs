@@ -2,9 +2,9 @@
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
-using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
+using Windows.ApplicationModel.Background;
 using Windows.Foundation;
 using Windows.UI.Composition;
 using Windows.UI.Xaml;
@@ -23,6 +23,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		AxisOrientation Component1Axis { get; set; } = AxisOrientation.Horizontal;
 		AxisOrientation Component2Axis { get; set; } = AxisOrientation.Vertical;
 		public ImageMarkerSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
+		const string PROP_Position = "Position";
+		const string PARM_Position = "Position";
+		const string PARM_global = "global";
+		const string PARM_local = "local";
+		readonly static string XAXIS = $"({PARM_local}.Position.X * {PARM_global}.ModelX.X + {PARM_global}.ModelX.Z) * {PARM_global}.ProjX.X + {PARM_global}.ProjX.Z";
+		readonly static string YAXIS = $"({PARM_local}.Position.Y * {PARM_global}.ModelY.Y + {PARM_global}.ModelY.Z) * {PARM_global}.ProjY.Y + {PARM_global}.ProjY.Z";
+		readonly static string WIDTH = $"{PARM_global}.MarkerWidth*{PARM_global}.ModelX.X*{PARM_global}.ProjX.X";
+		readonly static string OFFSET = $"Vector3({XAXIS}, {YAXIS}, 0)";
+		readonly static string SIZE = $"Vector2({WIDTH}, ({WIDTH})*{PARM_global}.AspectRatio)";
 		public void CreateAnimations(Compositor cx, CompositionPropertySet props, AxisOrientation c1a, AxisOrientation c2a) {
 			Component1Axis = c1a;
 			Component2Axis = c2a;
@@ -30,24 +39,21 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Position = cx.CreateVector2KeyFrameAnimation();
 			Position.Comment = $"Marker[{Index}]_Position";
 			Position.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-			Position.InsertExpressionKeyFrame(1f, "Position");
-			Position.SetVector2Parameter("Position", vx);
-			Position.Target = "Position";
+			Position.InsertExpressionKeyFrame(1f, PARM_Position);
+			Position.SetVector2Parameter(PARM_Position, vx);
+			Position.Target = PROP_Position;
 			PropertySet = cx.CreatePropertySet();
 			PropertySet.Comment = $"Marker[{Index}]_PropertySet";
-			PropertySet.InsertVector2("Position", vx);
-			const string XAXIS = "(local.Position.X * global.ModelX.X + global.ModelX.Z) * global.ProjX.X + global.ProjX.Z";
-			const string YAXIS = "(local.Position.Y * global.ModelY.Y + global.ModelY.Z) * global.ProjY.Y + global.ProjY.Z";
-			Offset = cx.CreateExpressionAnimation($"Vector3({XAXIS}, {YAXIS}, 0)");
+			PropertySet.InsertVector2(PROP_Position, vx);
+			Offset = cx.CreateExpressionAnimation(OFFSET);
 			Offset.Comment = $"Marker[{Index}]_Offset";
-			Offset.SetReferenceParameter("local", PropertySet);
-			Offset.SetReferenceParameter("global", props);
+			Offset.SetExpressionReferenceParameter(PARM_local, PropertySet);
+			Offset.SetExpressionReferenceParameter(PARM_global, props);
 			Offset.Target = nameof(Visual.Offset);
-			const string WIDTH = "global.MarkerWidth*global.ModelX.X*global.ProjX.X";
-			Size = cx.CreateExpressionAnimation($"Vector2({WIDTH}, ({WIDTH})*global.AspectRatio)");
+			Size = cx.CreateExpressionAnimation(SIZE);
 			Size.Comment = $"Marker[{Index}]_Size";
-			Size.SetReferenceParameter("local", PropertySet);
-			Size.SetReferenceParameter("global", props);
+			Size.SetExpressionReferenceParameter(PARM_local, PropertySet);
+			Size.SetExpressionReferenceParameter(PARM_global, props);
 			Size.Target = nameof(Visual.Size);
 		}
 		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
@@ -74,7 +80,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		public Vector2 UpdateOffset() {
 			var vx = OffsetFor(Component1Axis, Component2Axis);
-			Position.SetVector2Parameter("Position", vx);
+			Position.SetVector2Parameter(PARM_Position, vx);
 			PropertySet.StartAnimation(Position.Target, Position);
 			return vx;
 		}
@@ -86,9 +92,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <param name="it">Use for list operations.</param>
 		/// <param name="vsc">Target collection.</param>
 		public void Enter(Vector2 enter, ItemTransition it, VisualCollection vsc) {
-			//Element.Offset = new Vector3(enter, 0);
-			PropertySet.InsertVector2("Position", enter);
-			Position.SetVector2Parameter("Position", enter);
+			PropertySet.InsertVector2(PROP_Position, enter);
+			Position.SetVector2Parameter(PARM_Position, enter);
 			Element.StartAnimation(Offset.Target, Offset);
 			Element.StartAnimation(Size.Target, Size);
 			if (it == ItemTransition.Head) {
@@ -124,6 +129,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 	}
 	#endregion
+	#region ImageMarkerSeries
 	public class ImageMarkerSeries : CategoryValue_VisualPerItem<ImageMarkerSeries_ItemState>, IRequireEnterLeave, IConsumer<Phase_Transforms> {
 		internal static readonly LogTools.Flag _trace = LogTools.Add("ImageMarkerSeries", LogTools.Level.Error);
 		#region properties
@@ -136,6 +142,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Call <see cref="IAnimationController.InitTransform(Matrix3x2)"/> exactly once.
 		/// </summary>
 		bool didInitTransform = false;
+		bool didInitTransform2 = false;
 		/// <summary>
 		/// Shared reference to the marker brush.
 		/// </summary>
@@ -155,55 +162,68 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		Vector3KeyFrameAnimation ProjY { get; set; }
 		#endregion
 		#region helpers
+		const string PROP_ModelX = "ModelX";
+		const string PROP_ModelY = "ModelY";
+		const string PROP_ProjX = "ProjX";
+		const string PROP_ProjY = "ProjY";
+		const string PROP_MarkerWidth = "MarkerWidth";
+		const string PROP_AspectRatio = "AspectRatio";
+		const string PARM_Index = "Index";
+		const double DURATION = 300;
 		protected void CreateAnimations(Compositor cx) {
+			#region global property set
 			PropertySet = cx.CreatePropertySet();
 			PropertySet.Comment = $"{Name}_global";
-			PropertySet.InsertVector3("ModelX", new Vector3(1, 0, 0));
-			PropertySet.InsertVector3("ModelY", new Vector3(0, 1, 0));
-			PropertySet.InsertVector3("ProjX", new Vector3(1, 0, 0));
-			PropertySet.InsertVector3("ProjY", new Vector3(0, 1, 0));
-			PropertySet.InsertScalar("MarkerWidth", (float)MarkerWidth);
-			PropertySet.InsertScalar("AspectRatio", 1f);
+			PropertySet.InsertVector3(PROP_ModelX, new Vector3(1, 0, 0));
+			PropertySet.InsertVector3(PROP_ModelY, new Vector3(0, 1, 0));
+			PropertySet.InsertVector3(PROP_ProjX, new Vector3(1, 0, 0));
+			PropertySet.InsertVector3(PROP_ProjY, new Vector3(0, 1, 0));
+			PropertySet.InsertScalar(PROP_MarkerWidth, (float)MarkerWidth);
+			PropertySet.InsertScalar(PROP_AspectRatio, 1f);
+			#endregion
+			#region model-x
 			ModelX = cx.CreateVector3KeyFrameAnimation();
 			ModelX.Comment = $"{Name}_modelX";
-			ModelX.InsertExpressionKeyFrame(1f, "Index");
-			ModelX.SetVector3Parameter("Index", new Vector3(1, 0, 0));
-			ModelX.Duration = TimeSpan.FromMilliseconds(300);
+			ModelX.InsertExpressionKeyFrame(1f, PARM_Index);
+			ModelX.SetVector3Parameter(PARM_Index, new Vector3(1, 0, 0));
+			ModelX.Duration = TimeSpan.FromMilliseconds(DURATION);
 			ModelX.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-			ModelX.Target = "ModelX";
+			ModelX.Target = PROP_ModelX;
+			#endregion
+			#region model-y
 			ModelY = cx.CreateVector3KeyFrameAnimation();
 			ModelY.Comment = $"{Name}_modelY";
-			ModelY.InsertExpressionKeyFrame(1f, "Index");
-			ModelY.SetVector3Parameter("Index", new Vector3(0, 1, 0));
-			ModelY.Duration = TimeSpan.FromMilliseconds(300);
+			ModelY.InsertExpressionKeyFrame(1f, PARM_Index);
+			ModelY.SetVector3Parameter(PARM_Index, new Vector3(0, 1, 0));
+			ModelY.Duration = TimeSpan.FromMilliseconds(DURATION);
 			ModelY.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-			ModelY.Target = "ModelY";
+			ModelY.Target = PROP_ModelY;
+			#endregion
+			#region proj-x
 			ProjX = cx.CreateVector3KeyFrameAnimation();
 			ProjX.Comment = $"{Name}_projX";
-			ProjX.InsertExpressionKeyFrame(1f, "Index");
-			ProjX.SetVector3Parameter("Index", new Vector3(1, 0, 0));
-			ProjX.Duration = TimeSpan.FromMilliseconds(300);
+			ProjX.InsertExpressionKeyFrame(1f, PARM_Index);
+			ProjX.SetVector3Parameter(PARM_Index, new Vector3(1, 0, 0));
+			ProjX.Duration = TimeSpan.FromMilliseconds(DURATION);
 			ProjX.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-			ProjX.Target = "ProjX";
+			ProjX.Target = PROP_ProjX;
+			#endregion
+			#region proj-y
 			ProjY = cx.CreateVector3KeyFrameAnimation();
 			ProjY.Comment = $"{Name}_projY";
-			ProjY.InsertExpressionKeyFrame(1f, "Index");
-			ProjY.SetVector3Parameter("Index", new Vector3(0, 1, 0));
-			ProjY.Duration = TimeSpan.FromMilliseconds(300);
+			ProjY.InsertExpressionKeyFrame(1f, PARM_Index);
+			ProjY.SetVector3Parameter(PARM_Index, new Vector3(0, 1, 0));
+			ProjY.Duration = TimeSpan.FromMilliseconds(DURATION);
 			ProjY.StopBehavior = AnimationStopBehavior.SetToFinalValue;
-			ProjY.Target = "ProjY";
+			ProjY.Target = PROP_ProjY;
+			#endregion
 		}
 		protected void DisposeAnimations() {
-			PropertySet.Dispose();
-			PropertySet = null;
-			ModelX.Dispose();
-			ModelX = null;
-			ModelY.Dispose();
-			ModelY = null;
-			ProjX.Dispose();
-			ProjX = null;
-			ProjY.Dispose();
-			ProjY = null;
+			PropertySet?.Dispose(); PropertySet = null;
+			ModelX?.Dispose(); ModelX = null;
+			ModelY?.Dispose(); ModelY = null;
+			ProjX?.Dispose(); ProjX = null;
+			ProjY?.Dispose(); ProjY = null;
 		}
 		Vector2 Spawn(ImageMarkerSeries_ItemState item, ItemTransition it) {
 			double c1 = it == ItemTransition.Head
@@ -259,7 +279,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (args.Status == LoadedImageSourceLoadStatus.Success) {
 					Size decodedSize = sender.DecodedSize;
 					MarkerSize = new Vector2((float)decodedSize.Width, (float)decodedSize.Height);
-					PropertySet.InsertScalar("AspectRatio", (float)decodedSize.Height / (float)decodedSize.Width);
+					PropertySet.InsertScalar(PROP_AspectRatio, (float)decodedSize.Height / (float)decodedSize.Width);
 				}
 			};
 			var brush = cx.CreateSurfaceBrush();
@@ -308,13 +328,13 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (model == Model) return;
 			if (!didInitTransform) {
 				//Animate?.InitTransform(model);
-				PropertySet.InsertVector3("ModelX", new Vector3(model.M11, model.M21, model.M31));
-				PropertySet.InsertVector3("ModelY", new Vector3(model.M12, model.M22, model.M32));
+				PropertySet.InsertVector3(PROP_ModelX, new Vector3(model.M11, model.M21, model.M31));
+				PropertySet.InsertVector3(PROP_ModelY, new Vector3(model.M12, model.M22, model.M32));
 				didInitTransform = true;
 			}
 			Model = model;
-			ModelX.SetVector3Parameter("Index", new Vector3(model.M11, model.M21, model.M31));
-			ModelY.SetVector3Parameter("Index", new Vector3(model.M12, model.M22, model.M32));
+			ModelX.SetVector3Parameter(PARM_Index, new Vector3(model.M11, model.M21, model.M31));
+			ModelY.SetVector3Parameter(PARM_Index, new Vector3(model.M12, model.M22, model.M32));
 			PropertySet.StartAnimation(ModelX.Target, ModelX);
 			PropertySet.StartAnimation(ModelY.Target, ModelY);
 			/*
@@ -344,10 +364,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			var yaxis = CategoryAxis.Orientation == AxisOrientation.Vertical ? CategoryAxis.Reversed : ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, rctx.SeriesArea);
+			if(!didInitTransform2) {
+				PropertySet.InsertVector3(PROP_ProjX, new Vector3(proj.M11, proj.M21, proj.M31));
+				PropertySet.InsertVector3(PROP_ProjY, new Vector3(proj.M12, proj.M22, proj.M32));
+				didInitTransform2 = true;
+			}
 			if (proj == LastProj) return;
 			LastProj = proj;
-			ProjX.SetVector3Parameter("Index", new Vector3(proj.M11, proj.M21, proj.M31));
-			ProjY.SetVector3Parameter("Index", new Vector3(proj.M12, proj.M22, proj.M32));
+			ProjX.SetVector3Parameter(PARM_Index, new Vector3(proj.M11, proj.M21, proj.M31));
+			ProjY.SetVector3Parameter(PARM_Index, new Vector3(proj.M12, proj.M22, proj.M32));
 			PropertySet.StartAnimation(ProjX.Target, ProjX);
 			PropertySet.StartAnimation(ProjY.Target, ProjY);
 		}
@@ -379,4 +404,5 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 	}
+	#endregion
 }
