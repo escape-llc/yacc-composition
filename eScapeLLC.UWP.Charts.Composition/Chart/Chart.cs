@@ -304,8 +304,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			args.Handled = true;
 		}
 		private void Chart_SizeChanged(object sender, SizeChangedEventArgs e) {
+			_trace.Verbose($"SizeChanged p:{e.PreviousSize} n:{e.NewSize}");
 			// propagate to composition layers
-			foreach(var layer in Compositions) {
+			foreach (var layer in Compositions) {
 				(layer as CompositionLayer).SizeChanged(e);
 			}
 		}
