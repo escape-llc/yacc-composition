@@ -1,6 +1,7 @@
 ﻿using eScape.Core;
 using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
+using eScapeLLC.UWP.Charts.Composition.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -85,7 +86,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// List of active TextBlocks for labels.
 		/// </summary>
 		protected List<ItemStateCore> ItemState { get; set; }
-		protected Binding LabelBinding { get; set; }
+		protected Data.Binding LabelBinding { get; set; }
 		#endregion
 		#region ctor
 		public CategoryAxis() {
@@ -206,7 +207,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		void IConsumer<Phase_DataSourceOperation>.Consume(Phase_DataSourceOperation message) {
 			if (message.Operation.Name != DataSourceName) return;
 			if(message.Operation is DataSource_Typed dstt) {
-				LabelBinding = Binding.For(dstt.ItemType, LabelMemberPath);
+				LabelBinding = Data.Binding.For(dstt.ItemType, LabelMemberPath);
 				if (LabelBinding == null) return;
 			}
 			switch (message.Operation) {
