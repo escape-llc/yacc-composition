@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace eScapeLLC.UWP.Charts.Composition {
+namespace eScapeLLC.UWP.Charts.Composition.Data {
 	#region Binding
 	/// <summary>
 	/// Value extractor.
