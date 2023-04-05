@@ -123,7 +123,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 					ccb.Dispose();
 				}
 			};
-			Position.SetVector2Parameter("Position", exit);
+			Position.SetVector2Parameter(PARM_Position, exit);
 			PropertySet.StartAnimation(Position.Target, Position);
 			ccb.End();
 		}
