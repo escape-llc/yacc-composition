@@ -397,10 +397,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		protected IChartCompositionLayer Layer { get; set; }
 		/// <summary>
-		/// Maintained from axis extents.
-		/// </summary>
-		protected Matrix3x2 Model { get; set; }
-		/// <summary>
 		/// Holds all the visuals for this series.
 		/// </summary>
 		protected ContainerVisual Container { get; set; }
