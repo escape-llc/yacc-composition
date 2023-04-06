@@ -134,6 +134,7 @@
     <Compile Include="Decorations\ValueRule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Series\AnimationFactory.cs" />
+    <Compile Include="Series\AnimationProperties.cs" />
     <Compile Include="Series\CategoryValueSeries.cs" />
     <Compile Include="Series\ColumnSeries.cs" />
     <Compile Include="Series\ElementFactory.cs" />
