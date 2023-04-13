@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Numerics;
-using System.Reflection;
 using Windows.UI.Composition;
-using Windows.UI.Xaml;
 using Windows.UI.Xaml.Hosting;
 
-namespace eScapeLLC.UWP.Charts.Composition {
+namespace eScapeLLC.UWP.Charts.Composition.Animation {
 	#region AnimationProperties
 	/// <summary>
 	/// Common values.
@@ -46,11 +44,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 	}
 	#endregion
-	#region Animation_Global
+	#region Global
 	/// <summary>
 	/// Maintains and animates the global Model/Projection transforms.  The animation target is the <see cref="PropertySet"/> property.
 	/// </summary>
-	public class Animation_Global : IDisposable {
+	public class Global : IDisposable {
 		#region names
 		public const string PROP_ModelX = "ModelX";
 		public const string PROP_ModelY = "ModelY";
@@ -94,7 +92,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="cx">Use to acquire objects.</param>
 		/// <param name="name">Use for names.</param>
-		public Animation_Global(Compositor cx, string name) {
+		public Global(Compositor cx, string name) {
 			CreateAnimations(cx, name);
 		}
 		#endregion
@@ -176,11 +174,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 	}
 	#endregion
-	#region Animation_Local
+	#region Local
 	/// <summary>
 	/// Core of the per-item composition animations.
 	/// </summary>
-	public class Animation_Local : IDisposable {
+	public class Local : IDisposable {
 		private bool disposedValue;
 		#region properties
 		public CompositionPropertySet PropertySet { get; private set; }
@@ -192,7 +190,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="cx">Use for obtaining objects.</param>
 		/// <param name="global">Global property set.</param>
-		public Animation_Local(Compositor cx, CompositionPropertySet global) {
+		public Local(Compositor cx, CompositionPropertySet global) {
 			if (cx == null) throw new ArgumentNullException(nameof(cx));
 			if (global == null) throw new ArgumentNullException(nameof(global));
 			Position = cx.CreateVector2KeyFrameAnimation();
@@ -269,12 +267,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 	}
 	#endregion
-	#region Animation_MarkerBrush
+	#region MarkerBrush
 	/// <summary>
 	/// Maintains animations for a "Marker Brush" which is a rectangle placed at the World Coordinates.
 	/// The Marker Width is in Category Units and is the basis for the size calculations.
 	/// </summary>
-	public class Animation_MarkerBrush : Animation_Local {
+	public class MarkerBrush : Local {
 		/// <summary>
 		/// Name of property to place in GLOBAL property set.
 		/// </summary>
@@ -295,7 +293,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="cx">Use to obtain objects.</param>
 		/// <param name="global">Use for GLOBAL property set.</param>
-		public Animation_MarkerBrush(Compositor cx, CompositionPropertySet global) :base(cx, global) {
+		public MarkerBrush(Compositor cx, CompositionPropertySet global) :base(cx, global) {
 			Offset = cx.CreateExpressionAnimation(AnimationProperties.OFFSET);
 			Offset.Comment = $"Marker[{GetHashCode()}]_Offset";
 			Offset.SetExpressionReferenceParameter(AnimationProperties.PARM_local, PropertySet);
@@ -330,11 +328,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 	}
 	#endregion
-	#region Animation_UIElement
+	#region XamlElement
 	/// <summary>
-	/// Manages the <see cref="UIElement.Translation"/> property instead of <see cref="Visual.Offset"/> to animate a <see cref="UIElement"/>.
+	/// Manages the <see cref="Windows.UI.Xaml.UIElement.Translation"/> property instead of <see cref="Visual.Offset"/> to animate a <see cref="Windows.UI.Xaml.UIElement"/>.
 	/// </summary>
-	public class Animation_UIElement : Animation_Local {
+	public class XamlElement : Local {
 		#region properties
 		ExpressionAnimation Translate { get; set; }
 		#endregion
@@ -344,12 +342,12 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="cx">Use to obtain objects.</param>
 		/// <param name="global">Use for GLOBAL property set.</param>
-		public Animation_UIElement(Compositor cx, CompositionPropertySet global) :base(cx, global) {
+		public XamlElement(Compositor cx, CompositionPropertySet global) :base(cx, global) {
 			Translate = cx.CreateExpressionAnimation(AnimationProperties.OFFSET);
 			Translate.Comment = $"UIElement[{GetHashCode()}]_Translation";
 			Translate.SetExpressionReferenceParameter(AnimationProperties.PARM_local, PropertySet);
 			Translate.SetExpressionReferenceParameter(AnimationProperties.PARM_global, global);
-			Translate.Target = nameof(UIElement.Translation);
+			Translate.Target = nameof(Windows.UI.Xaml.UIElement.Translation);
 		}
 		#endregion
 		#region extensions
@@ -369,7 +367,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// Terminate all animations.
 		/// </summary>
 		/// <param name="uie">Use to obtain <see cref="Visual"/> or NULL.</param>
-		public virtual void Stop(UIElement uie) {
+		public virtual void Stop(Windows.UI.Xaml.UIElement uie) {
 			Visual element = uie != null ? ElementCompositionPreview.GetElementVisual(uie) : null;
 			Stop(element);
 		}
@@ -378,7 +376,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="uie">Use to obtain <see cref="Visual"/> or NULL.</param>
 		/// <param name="position">Entry location.</param>
-		public virtual void Enter(UIElement uie, Vector2 position) {
+		public virtual void Enter(Windows.UI.Xaml.UIElement uie, Vector2 position) {
 			Visual element = uie != null ? ElementCompositionPreview.GetElementVisual(uie) : null;
 			Enter(element, position);
 		}
