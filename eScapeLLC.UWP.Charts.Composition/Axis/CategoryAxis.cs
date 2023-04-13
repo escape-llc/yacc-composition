@@ -9,12 +9,14 @@ using System.Numerics;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Data;
+using System.ComponentModel;
+using Windows.UI.Xaml.Hosting;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	public class CategoryAxis : AxisCommon,
 		IRequireEnterLeave, IChartAxis, IOperationController<CategoryAxis.Axis_ItemState>,
 		IConsumer<Phase_InitializeAxes>, IConsumer<Phase_AxisExtents>, IConsumer<Phase_Layout>,
-		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_Transforms> {
+		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
 		class Axis_ItemState : ItemStateCore {
@@ -87,6 +89,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		protected List<ItemStateCore> ItemState { get; set; }
 		protected Data.Binding LabelBinding { get; set; }
+		/// <summary>
+		/// MUST be NULL after processing.
+		/// This is because the "end" phases execute regardless of the <see cref="DataSource"/> that caused it.
+		/// </summary>
+		IEnumerable<ItemStateOperation<Axis_ItemState>> Pending { get; set; }
 		#endregion
 		#region ctor
 		public CategoryAxis() {
@@ -149,49 +156,55 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				item.ResetElement();
 			}
 		}
-		void IOperationController<Axis_ItemState>.EnteringItem(int index, ItemTransition it, Axis_ItemState item) {
-			item.Reindex(index);
-			bool elementSelected2 = IsSelected(item);
-			if (elementSelected2) {
-				item.SetElement(CreateElement(item.label));
+		void IOperationController<Axis_ItemState>.EnteringItem(int index, ItemTransition it, Axis_ItemState state) {
+			state.Reindex(index);
+			bool elementSelected = IsSelected(state);
+			if (elementSelected) {
+				state.SetElement(CreateElement(state.label));
+				Entering(state);
+				UpdateStyle(state);
+				//UpdateOffset(state);
 			}
-			UpdateStyle(item);
-			Entering(item);
 		}
-		void IOperationController<Axis_ItemState>.LiveItem(int index, ItemTransition it, Axis_ItemState item) {
-			item.Reindex(index);
-			bool elementSelected = IsSelected(item);
-			if (elementSelected && item.Element == null) {
-				item.SetElement(CreateElement(item.label));
-				Entering(item);
+		void IOperationController<Axis_ItemState>.LiveItem(int index, ItemTransition it, Axis_ItemState state) {
+			state.Reindex(index);
+			bool elementSelected = IsSelected(state);
+			if (elementSelected && state.Element == null) {
+				state.SetElement(CreateElement(state.label));
+				Entering(state);
+				UpdateStyle(state);
+				//UpdateOffset(state);
 			}
-			else if (!elementSelected && item.Element != null) {
-				Exiting(item);
+			else if (!elementSelected && state.Element != null) {
+				Exiting(state);
 			}
-			UpdateStyle(item);
+			else {
+				UpdateStyle(state);
+				//UpdateOffset(state);
+			}
 		}
-		void IOperationController<Axis_ItemState>.ExitingItem(int index, ItemTransition it, Axis_ItemState item) {
-			if (item.Element != null) {
-				Exiting(item);
+		void IOperationController<Axis_ItemState>.ExitingItem(int index, ItemTransition it, Axis_ItemState state) {
+			if (state.Element != null) {
+				Exiting(state);
 			}
 		}
 		#endregion
 		#region virtual data source handlers
 		protected virtual void Reset(DataSource_Reset reset) {
-			var ops = reset.CreateOperations(ItemState, Entering);
-			UpdateCore(ops);
+			Pending = reset.CreateOperations(ItemState, Entering);
+			//UpdateCore(ops);
 		}
 		protected virtual void SlidingWindow(DataSource_SlidingWindow slidingWindow) {
-			var ops = slidingWindow.CreateOperations(ItemState, Entering);
-			UpdateCore(ops);
+			Pending = slidingWindow.CreateOperations(ItemState, Entering);
+			//UpdateCore(ops);
 		}
 		protected virtual void Add(DataSource_Add add) {
-			var ops = add.CreateOperations(ItemState, Entering);
-			UpdateCore(ops);
+			Pending = add.CreateOperations(ItemState, Entering);
+			//UpdateCore(ops);
 		}
 		protected virtual void Remove(DataSource_Remove remove) {
-			var ops = remove.CreateOperations<Axis_ItemState>(ItemState);
-			UpdateCore(ops);
+			Pending = remove.CreateOperations<Axis_ItemState>(ItemState);
+			//UpdateCore(ops);
 		}
 		#endregion
 		#region handlers
@@ -235,6 +248,16 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		float YOffSetFor() {
 			if(Side == Side.Top) return 1;
 			return 0;
+		}
+		void IConsumer<Phase_ModelComplete>.Consume(Phase_ModelComplete message) {
+			if (Pending == null) return;
+			_trace.Verbose($"{Name} model-complete");
+			try {
+				UpdateCore(Pending);
+			}
+			finally {
+				Pending = null;
+			}
 		}
 		void IConsumer<Phase_Transforms>.Consume(Phase_Transforms message) {
 			if (ItemState.Count == 0) return;
