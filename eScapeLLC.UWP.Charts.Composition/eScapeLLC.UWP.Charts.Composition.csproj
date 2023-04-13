@@ -136,6 +136,8 @@
     <Compile Include="Series\AnimationFactory.cs" />
     <Compile Include="Series\AnimationProperties.cs" />
     <Compile Include="Series\CategoryValueSeries.cs" />
+    <Compile Include="Series\CategoryValue_ShapePerItem.cs" />
+    <Compile Include="Series\CategoryValue_VisualPerItem.cs" />
     <Compile Include="Series\ColumnSeries.cs" />
     <Compile Include="Series\ElementFactory.cs" />
     <Compile Include="Series\ElementFactoryDefaults.cs" />
