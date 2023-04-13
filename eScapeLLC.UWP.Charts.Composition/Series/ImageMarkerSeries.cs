@@ -26,7 +26,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Component1Axis = c1a;
 			Component2Axis = c2a;
 			var vx = MappingSupport.ToVector(Component1, Component1Axis, Component2, Component2Axis);
-			Local = new Animation_MarkerBrush(cx, "xxx", props);
+			Local = new Animation_MarkerBrush(cx, props);
 			Local.Initial(vx);
 		}
 		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
