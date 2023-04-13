@@ -21,7 +21,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public class LineSeries : CategoryValueSeries<LineSeries_ItemState>,
 		IRequireEnterLeave, IProvideSeriesItemValues,
 		IConsumer<Phase_Transforms> {
-		static LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
+		static readonly LogTools.Flag _trace = LogTools.Add("LineSeries", LogTools.Level.Error);
 		#region inner
 		#endregion
 		#region ctor
@@ -29,6 +29,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region properties
+		/// <summary>
+		/// How to create the elements for this series.
+		/// </summary>
+		public IElementFactory ElementFactory { get; set; }
 		public double LineOffset { get; set; }
 		/// <summary>
 		/// Return current state as read-only.
@@ -69,8 +73,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ResetLimits();
 			Model = Matrix3x2.Identity;
 			for (int ix = 0; ix < itemstate.Count; ix++) {
-				LineSeries_ItemState state = itemstate[ix] as LineSeries_ItemState;
-				if (state == null) continue;
+				if (!(itemstate[ix] is LineSeries_ItemState state)) continue;
 				UpdateLimits(ix, state.DataValue, 0);
 				// no geometry updates
 			}
@@ -177,9 +180,9 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			EnsureAxes(icelc as IChartComponentContext);
 			EnsureValuePath(icelc as IChartComponentContext);
 			var icei = icelc as IChartErrorInfo;
-			//if (ElementFactory == null) {
-			//	icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ElementFactory)}' was not set", new[] { nameof(ElementFactory) }));
-			//}
+			if (ElementFactory == null) {
+				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ElementFactory)}' was not set", new[] { nameof(ElementFactory) }));
+			}
 			Compositor compositor = Window.Current.Compositor;
 			Container = compositor.CreateContainerShape();
 			Container.Comment = $"container_{Name}";
