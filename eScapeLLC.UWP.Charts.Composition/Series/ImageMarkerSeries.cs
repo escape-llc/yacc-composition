@@ -18,7 +18,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	/// Item state.
 	/// </summary>
 	public class ImageMarkerSeries_ItemState : ItemState_CategoryValue<Visual> {
-		Animation_MarkerBrush Local { get; set; }
+		Animation.MarkerBrush Local { get; set; }
 		AxisOrientation Component1Axis { get; set; } = AxisOrientation.Horizontal;
 		AxisOrientation Component2Axis { get; set; } = AxisOrientation.Vertical;
 		public ImageMarkerSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
@@ -26,7 +26,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			Component1Axis = c1a;
 			Component2Axis = c2a;
 			var vx = MappingSupport.ToVector(Component1, Component1Axis, Component2, Component2Axis);
-			Local = new Animation_MarkerBrush(cx, props);
+			Local = new Animation.MarkerBrush(cx, props);
 			Local.Initial(vx);
 		}
 		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
@@ -93,20 +93,33 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	public class ImageMarkerSeries : CategoryValue_VisualPerItem<ImageMarkerSeries_ItemState>, IRequireEnterLeave, IConsumer<Phase_Transforms> {
 		internal static readonly LogTools.Flag _trace = LogTools.Add("ImageMarkerSeries", LogTools.Level.Error);
 		#region properties
-		public string MarkerImageUrl { get; set; }
+		/// <summary>
+		/// Generates brush for sprites.
+		/// </summary>
+		public IBrushFactory MarkerFactory { get; set; }
+		/// <summary>
+		/// Marker offset in category units.
+		/// </summary>
 		public double MarkerOffset { get; set; }
+		/// <summary>
+		/// Marker width in category units.
+		/// Aspect ratio is preserved based on this measurement.
+		/// </summary>
 		public double MarkerWidth { get; set; }
 		#endregion
 		#region internal
 		/// <summary>
 		/// Shared reference to the marker brush.
 		/// </summary>
-		protected CompositionSurfaceBrush Marker { get; set; }
+		protected CompositionBrush Marker { get; set; }
 		/// <summary>
 		/// This will be (0,0) until surface is loaded.
 		/// </summary>
 		protected Vector2 MarkerSize { get; set; }
-		Animation_Global Global { get; set; }
+		/// <summary>
+		/// Manage animations.
+		/// </summary>
+		Animation.Global Global { get; set; }
 		#endregion
 		#region helpers
 		Vector2 Spawn(ImageMarkerSeries_ItemState item, ItemTransition it) {
@@ -146,7 +159,6 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			}
 			UpdateLimits(index);
 		}
-		protected override IElementFactoryContext CreateAnimateContext(ImageMarkerSeries_ItemState item, ItemTransition it) => new CategoryValueContext(Container.Compositor, item, CategoryAxis, ValueAxis, it, CategoryValueMode.Marker);
 		protected override Visual CreateLegendVisual(Compositor cx) {
 			var vis = cx.CreateSpriteVisual();
 			EnsureMarker(cx);
@@ -155,20 +167,17 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			return vis;
 		}
 		protected void EnsureMarker(Compositor cx) {
+			if (MarkerFactory == null) return;
 			if (Marker != null) return;
-			var isurf = LoadedImageSurface.StartLoadFromUri(new Uri(MarkerImageUrl));
-			isurf.LoadCompleted += (sender, args) => {
+			var iefc = new DefaultBrushFactoryContext(cx, (sender, args) => {
 				_trace.Verbose($"{Name}.image.LoadCompleted {args.Status} ds:{sender.DecodedSize} ns:{sender.NaturalSize}");
 				if (args.Status == LoadedImageSourceLoadStatus.Success) {
 					Size decodedSize = sender.DecodedSize;
 					MarkerSize = new Vector2((float)decodedSize.Width, (float)decodedSize.Height);
-					Global.PropertySet.InsertScalar(Animation_MarkerBrush.PROP_AspectRatio, (float)decodedSize.Height / (float)decodedSize.Width);
+					Global.PropertySet.InsertScalar(Animation.MarkerBrush.PROP_AspectRatio, (float)decodedSize.Height / (float)decodedSize.Width);
 				}
-			};
-			var brush = cx.CreateSurfaceBrush();
-			brush.Surface = isurf;
-			brush.Stretch = CompositionStretch.Uniform;
-			Marker = brush;
+			});
+			Marker = MarkerFactory.CreateBrush(iefc);
 		}
 		protected override Visual CreateVisual(Compositor cx, ImageMarkerSeries_ItemState state) {
 			EnsureMarker(cx);
@@ -232,25 +241,22 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			EnsureAxes(icelc as IChartComponentContext);
 			EnsureValuePath(icelc as IChartComponentContext);
 			var icei = icelc as IChartErrorInfo;
-			if (ElementFactory == null) {
-				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(ElementFactory)}' was not set", new[] { nameof(ElementFactory) }));
+			if (MarkerFactory == null) {
+				icei?.Report(new ChartValidationResult(NameOrType(), $"Property '{nameof(MarkerFactory)}' was not set", new[] { nameof(MarkerFactory) }));
 			}
 			Compositor compositor = Window.Current.Compositor;
 			Container = compositor.CreateContainerVisual();
 			Container.Comment = $"container_{Name}";
 			Layer = icelc.CreateLayer(Container);
-			Animate = AnimationFactory?.CreateAnimationController(compositor);
-			Global = new Animation_Global(compositor, Name);
-			Global.PropertySet.InsertScalar(Animation_MarkerBrush.PROP_MarkerWidth, (float)MarkerWidth);
-			Global.PropertySet.InsertScalar(Animation_MarkerBrush.PROP_AspectRatio, 1f);
+			Global = new Animation.Global(compositor, Name);
+			Global.PropertySet.InsertScalar(Animation.MarkerBrush.PROP_MarkerWidth, (float)MarkerWidth);
+			Global.PropertySet.InsertScalar(Animation.MarkerBrush.PROP_AspectRatio, 1f);
 			_trace.Verbose($"{Name} enter v:{ValueAxisName} {ValueAxis} c:{CategoryAxisName} {CategoryAxis} d:{DataSourceName}");
 		}
 		public void Leave(IChartEnterLeaveContext icelc) {
 			_trace.Verbose($"{Name} leave");
 			Global?.Dispose();
 			Global = null;
-			Animate?.Dispose();
-			Animate = null;
 			Container = null;
 			icelc.DeleteLayer(Layer);
 			Layer = null;

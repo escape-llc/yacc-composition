@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Numerics;
+using Windows.Storage.Streams;
 using Windows.UI.Composition;
+using Windows.UI.Xaml.Media;
 
 namespace eScapeLLC.UWP.Charts.Composition {
 	#region interfaces
@@ -276,6 +278,45 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// </summary>
 		/// <param name="cs"></param>
 		void ApplyStyle(CompositionSpriteShape cs);
+	}
+	#endregion
+	#region IBrushFactoryContext
+	/// <summary>
+	/// Supply resources to factory.
+	/// </summary>
+	public interface IBrushFactoryContext {
+		/// <summary>
+		/// Use to obtain composition objects.
+		/// </summary>
+		Compositor Compositor { get; }
+		/// <summary>
+		/// Surface loaded callback.
+		/// </summary>
+		Action<LoadedImageSurface, LoadedImageSourceLoadCompletedEventArgs> Loaded { get; }
+	}
+	/// <summary>
+	/// Default implementation of <see cref="IBrushFactoryContext"/>.
+	/// </summary>
+	public sealed class DefaultBrushFactoryContext : IBrushFactoryContext {
+		public Compositor Compositor { get; private set; }
+		public Action<LoadedImageSurface, LoadedImageSourceLoadCompletedEventArgs> Loaded { get; private set; }
+		public DefaultBrushFactoryContext(Compositor compositor, Action<LoadedImageSurface, LoadedImageSourceLoadCompletedEventArgs> loaded) { 
+			Compositor = compositor;
+			Loaded = loaded;
+		}
+	}
+	#endregion
+	#region IBrushFactory
+	/// <summary>
+	/// Ability to create <see cref="CompositionBrush"/>.
+	/// </summary>
+	public interface IBrushFactory {
+		/// <summary>
+		/// Create the brush.
+		/// </summary>
+		/// <param name="iefc">Use for resources.</param>
+		/// <returns>New instance or NULL.</returns>
+		CompositionBrush CreateBrush(IBrushFactoryContext iefc);
 	}
 	#endregion
 	#region IAnimationController

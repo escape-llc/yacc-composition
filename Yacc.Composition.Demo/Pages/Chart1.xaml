@@ -153,6 +153,7 @@
 				<yacc:Brush_Color Color="Goldenrod"/>
 			</yf:LineGeometryFactory.StrokeBrush>
 		</yf:LineGeometryFactory>
+		<yf:ImageUrlSurfaceBrushFactory x:Key="Marker1Image" ImageUrl="ms-appx:///Assets/yacc_logo.png" />
 	</Page.Resources>
 	<RelativePanel Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
 		<CommandBar x:Name="toolbar"
@@ -185,9 +186,9 @@
 				<yacc:ColumnSeries Name="BarSeries3" DataSourceName="Source1" ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3" Title="Value 3"
 					BarWidth=".32" BarOffset=".66" />
-				<yacc:ImageMarkerSeries Name="MarkerSeries3" DataSourceName="Source1" MarkerWidth=".32" MarkerOffset=".66" MarkerImageUrl="ms-appx:///Assets/yacc_logo.png"
+				<yacc:ImageMarkerSeries Name="MarkerSeries3" DataSourceName="Source1" MarkerWidth=".32" MarkerOffset=".66"
 					CategoryAxisName="XAxis" ValueAxisName="YAxis" ValueMemberName="Value3" Title="Marker 3"
-					ElementFactory="{StaticResource Column3Style}" AnimationFactory="{StaticResource Animate}" />
+					MarkerFactory="{StaticResource Marker1Image}" />
 				<!--
 				<yacc:LineSeries Name="LineSeries1" DataSourceName="Source2" ElementFactory="{StaticResource Line1Style}"
 					CategoryAxisName="XAxis2" ValueAxisName="YAxis2" ValueMemberName="Value3"

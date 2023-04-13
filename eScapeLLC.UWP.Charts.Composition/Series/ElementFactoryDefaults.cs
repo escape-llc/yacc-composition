@@ -1,5 +1,4 @@
-﻿using eScape.Core;
-using System;
+﻿using System;
 using System.Numerics;
 using Windows.Foundation.Metadata;
 using Windows.UI.Composition;
@@ -198,6 +197,26 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 				sprite.StrokeBrush = StrokeBrush.CreateBrush(iefc.Compositor);
 			}
 			return sprite;
+		}
+	}
+	#endregion
+	#region ImageUrlSurfaceBrushFactory
+	public class ImageUrlSurfaceBrushFactory : IBrushFactory {
+		/// <summary>
+		/// URL of the content to load.
+		/// </summary>
+		public string ImageUrl { get; set; }
+		public CompositionBrush CreateBrush(IBrushFactoryContext iefc) {
+			LoadedImageSurface isurf = null;
+			isurf = LoadedImageSurface.StartLoadFromUri(new Uri(ImageUrl));
+			isurf.LoadCompleted += (sender, args) => {
+				//_trace.Verbose($"{Name}.image.LoadCompleted {args.Status} ds:{sender.DecodedSize} ns:{sender.NaturalSize}");
+				iefc.Loaded(sender, args);
+			};
+			var brush = iefc.Compositor.CreateSurfaceBrush();
+			brush.Surface = isurf;
+			brush.Stretch = CompositionStretch.Uniform;
+			return brush;
 		}
 	}
 	#endregion
