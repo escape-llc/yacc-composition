@@ -263,8 +263,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			if (ItemState.Count == 0) return;
 			if (double.IsNaN(Minimum) || double.IsNaN(Maximum)) return;
 			var rctx = message.ContextFor(this);
-			var pmatrix = ProjectionFor(rctx.Area, Reverse);
-			var matx = Matrix3x2.Multiply(pmatrix.model, pmatrix.proj);
+			var (model, proj) = ProjectionFor(rctx.Area, Reverse);
+			var matx = Matrix3x2.Multiply(model, proj);
 			double dx = 0, dy = 0;
 			foreach (Axis_ItemState state in ItemState) {
 				if (state.Element == null) continue;
@@ -302,7 +302,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			ItemState = itemstate;
 		}
 		FrameworkElement CreateElement(TextShim text) {
-			var fe = default(FrameworkElement);
+			FrameworkElement fe;
 			if (LabelTemplate != null) {
 				fe = LabelTemplate.LoadContent() as FrameworkElement;
 			}
