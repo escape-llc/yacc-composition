@@ -373,7 +373,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		}
 		#endregion
 		#region IRequireEnterLeave
-		long token;
+		//long token;
 		public void Enter(IChartEnterLeaveContext icelc) {
 			EnsureComponents(icelc as IChartComponentContext);
 			Layer = icelc.CreateLayer();
