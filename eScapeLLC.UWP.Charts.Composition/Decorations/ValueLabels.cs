@@ -365,7 +365,7 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			_trace.Verbose($"{Name} sizeChanged ps:{e.PreviousSize} ns:{e.NewSize} text:{vm?.Text}");
 #endif
 			var fe = sender as FrameworkElement;
-			var state = ItemState.Cast<Item_State>().SingleOrDefault((sis) => sis.Element == fe);
+			var state = ItemState.Cast<Item_State>().SingleOrDefault(sis => sis.Element == fe);
 			if (state != null) {
 				//_trace.Verbose($"{Name}[{state.Index}] loc:{state.CanvasLocation} xvao:{state.XValueAfterOffset} yv:{state.Value} ns:{e.NewSize} ds:{fe.DesiredSize} offs:{LabelOffset}");
 				state.Locate((float)e.NewSize.Width, (float)e.NewSize.Height);

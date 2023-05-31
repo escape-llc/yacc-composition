@@ -184,8 +184,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 			//if (ItemState.Count == 0) return;
 			if (Container == null) return;
 			var rctx = message.ContextFor(this);
-			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal ? ValueAxis.Reversed : false;
-			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical ? ValueAxis.Reversed : false;
+			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal && ValueAxis.Reversed;
+			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical && ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, rctx.SeriesArea);
 			Container.TransformMatrix = proj;
@@ -216,8 +216,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		#endregion
 		#region IProvideSeriesItemLayout
 		public ILayoutSession Create(Rect area) {
-			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal ? ValueAxis.Reversed : false;
-			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical ? ValueAxis.Reversed : false;
+			var xaxis = ValueAxis.Orientation == AxisOrientation.Horizontal && ValueAxis.Reversed;
+			var yaxis = ValueAxis.Orientation == AxisOrientation.Vertical && ValueAxis.Reversed;
 			var q = MatrixSupport.QuadrantFor(!xaxis, !yaxis);
 			var proj = MatrixSupport.ProjectForQuadrant(q, area);
 			return new Value_LayoutSession(Model, proj, MappingSupport.OppositeOf(ValueAxis.Orientation), ValueAxis.Orientation);
