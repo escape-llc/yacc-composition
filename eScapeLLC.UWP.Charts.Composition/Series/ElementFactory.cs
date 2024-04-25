@@ -2,6 +2,7 @@
 using System.Numerics;
 using Windows.Storage.Streams;
 using Windows.UI.Composition;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Media;
 
 namespace eScapeLLC.UWP.Charts.Composition {
@@ -389,6 +390,10 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		/// <returns>true: animation activated; false: no action caller MUST manage manually.</returns>
 		bool Offset(IElementFactoryContext iefc, CompositionObject co, Action<CompositionObject> cb = null);
 		ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc);
+		CompositionAnimation EnterAnimation { get; }
+		CompositionAnimation ExitAnimation { get; }
+		CompositionAnimation OffsetAnimation { get; }
+		CompositionAnimation TransformAnimation { get; }
 	}
 	#endregion
 	#region IAnimationFactory

@@ -48,6 +48,10 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		public ImplicitAnimationCollection CreateImplcit(IElementFactoryContext iefc) {
 			return null;
 		}
+		public CompositionAnimation EnterAnimation { get; }
+		public CompositionAnimation ExitAnimation { get; }
+		public CompositionAnimation OffsetAnimation { get; }
+		public CompositionAnimation TransformAnimation { get; }
 		public void Dispose() { }
 		public bool Enter(IElementFactoryContext iefc, CompositionObject co, CompositionShapeCollection ssc, Action<CompositionObject> cb = null) {
 			if(co is CompositionShape cs) {
@@ -101,6 +105,10 @@ namespace eScapeLLC.UWP.Charts.Composition.Factory {
 		/// Duration of "exit" animation in MS.
 		/// </summary>
 		public int DurationExit { get; set; } = AnimationFactory.DEFAULT;
+		public CompositionAnimation EnterAnimation => enter;
+		public CompositionAnimation ExitAnimation => exit;
+		public CompositionAnimation OffsetAnimation => offset;
+		public CompositionAnimation TransformAnimation => xform;
 		#endregion
 		#region data
 		private bool disposedValue;

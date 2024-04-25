@@ -3,6 +3,7 @@ using eScape.Host;
 using eScapeLLC.UWP.Charts.Composition.Events;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using Windows.Foundation;
@@ -11,15 +12,100 @@ using Windows.UI.Composition;
 using Windows.UI.Xaml;
 
 namespace eScapeLLC.UWP.Charts.Composition {
+	public class AnimationCollection {
+		public AnimationCollection(CompositionShapeCollection ssc, CompositionAnimation enter, CompositionAnimation exit, CompositionAnimation offset, CompositionAnimation xform, Func<(Axis_Extents category, Axis_Extents value)> extents) {
+			Shapes = ssc;
+			Enter = enter;
+			Exit = exit;
+			Offset = offset;
+			TransformMatrix = xform;
+			Extents = extents;
+		}
+		public CompositionShapeCollection Shapes { get; private set; }
+		public CompositionAnimation Enter { get; private set; }
+		public CompositionAnimation Exit { get; private set; }
+		public CompositionAnimation Offset { get; private set; }
+		public CompositionAnimation TransformMatrix { get; private set; }
+		public Func<(Axis_Extents category, Axis_Extents value)> Extents { get; set; }
+	}
 	/// <summary>
 	/// Item state.
 	/// <para/>
 	/// NOTE THIS CAN NO LONGER BE an Inner Class or XAML will not load it!
 	/// </summary>
-	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape> {
-		public ColumnSeries_ItemState(int index, double categoryOffset, double value) : base(index, categoryOffset, value) { }
+	public class ColumnSeries_ItemState : ItemState_CategoryValue<CompositionShape>, ItemController {
+		static readonly LogTools.Flag _trace = LogTools.Add("ColumnSeries_ItemState", LogTools.Level.Error);
+		readonly AnimationCollection anim;
+		public ColumnSeries_ItemState(int index, double categoryOffset, double value, AnimationCollection anim) : base(index, categoryOffset, value) {
+			this.anim = anim;
+		}
 		public override Vector2 OffsetFor(AxisOrientation cori, AxisOrientation vori) {
 			return MappingSupport.OffsetForColumn(Component1, cori, Component2, vori);
+		}
+		Vector2 Spawn(ItemTransition it) {
+			var (cat, val) = anim.Extents();
+			double c1 = it == ItemTransition.Head
+				? cat.Minimum - 2 + CategoryOffset
+				: cat.Maximum + 2 + CategoryOffset;
+			var vxx = MappingSupport.OffsetForColumn(
+					c1, cat.Orientation,
+					Component2, val.Orientation);
+			return vxx;
+		}
+		public void Entering(ItemTransition it) {
+			if (Element == null) return;
+			var enter = Spawn(it);
+			_trace.Verbose($"Enter {Element.Comment} {it} spawn:({enter.X},{enter.Y})");
+			// Enter VT at spawn point
+			Element.Offset = enter;
+			if (it == ItemTransition.Head) {
+				anim.Shapes.Insert(0, Element);
+			}
+			else {
+				anim.Shapes.Add(Element);
+			}
+			if (anim.Enter.Target != nameof(CompositionShape.Offset)) {
+				// if it's Offset we expect a call for that next, otherwise start this one
+				Element.StartAnimation(anim.Enter.Target, anim.Enter);
+			}
+			// connect to expression for TransformMatrix
+			Element.StartAnimation(anim.TransformMatrix.Target, anim.TransformMatrix);
+		}
+		public void Live(ItemTransition it) {
+			if (Element == null) return;
+			var (cat, val) = anim.Extents();
+			var vxx = MappingSupport.OffsetForColumn(
+					CategoryValue + CategoryOffset, cat.Orientation,
+					Component2, val.Orientation);
+			_trace.Verbose($"Offset {Element.Comment}  [ {it}] move:({vxx.X},{vxx.Y})");
+			if (vxx != Element.Offset) {
+				anim.Offset.SetVector2Parameter("Index", vxx);
+				Element.StartAnimation(anim.Offset.Target, anim.Offset);
+			}
+		}
+		public void Exiting(ItemTransition it) {
+			if (Element == null) return;
+			CompositionScopedBatch ccb = Element.Compositor.CreateScopedBatch(CompositionBatchTypes.Animation);
+			ccb.Comment = $"ScopedBatch_{Element.Comment}";
+			ccb.Completed += (sender, cbcea) => {
+				try {
+					// needed?
+					Element.StopAnimation(anim.TransformMatrix.Target);
+					anim.Shapes.Remove(Element);
+					ResetElement();
+				}
+				catch (Exception ex) {
+					_trace.Error($"ccb.Completed: {ex}");
+				}
+				finally {
+					ccb.Dispose();
+				}
+			};
+			var exit = Spawn(it);
+			_trace.Verbose($"Exit {Element.Comment} {it} spawn:({exit.X},{exit.Y})");
+			anim.Exit.SetVector2Parameter("Index", exit);
+			Element.StartAnimation(anim.Exit.Target, anim.Exit);
+			ccb.End();
 		}
 	}
 	/// <summary>
@@ -110,7 +196,8 @@ namespace eScapeLLC.UWP.Charts.Composition {
 				if (!value_val.HasValue || double.IsNaN(value_val.Value)) {
 					return null;
 				}
-				var istate = new ColumnSeries_ItemState(index, BarOffset, value_val.Value);
+				var ac = new AnimationCollection(Container.Shapes, Animate.EnterAnimation, Animate.ExitAnimation, Animate.OffsetAnimation, Animate.TransformAnimation, () => (CategoryAxis, ValueAxis));
+				var istate = new ColumnSeries_ItemState(index, BarOffset, value_val.Value, ac);
 				_trace.Verbose($"{Name}[{index}] create-state val:{istate.DataValue}");
 				return istate;
 			}

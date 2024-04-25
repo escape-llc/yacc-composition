@@ -33,6 +33,11 @@ namespace eScapeLLC.UWP.Charts.Composition {
 	 Head,
 	 Tail
 	}
+	public interface ItemController {
+		void Entering(ItemTransition transition);
+		void Live(ItemTransition transition);
+		void Exiting(ItemTransition transition);
+	}
 	#region ISeriesItem
 	/// <summary>
 	/// Entry point to series item data.

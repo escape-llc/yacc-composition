@@ -19,12 +19,15 @@ namespace eScapeLLC.UWP.Charts.Composition {
 		IConsumer<Phase_DataSourceOperation>, IConsumer<Phase_ModelComplete>, IConsumer<Phase_Transforms> {
 		static readonly LogTools.Flag _trace = LogTools.Add("CategoryAxis", LogTools.Level.Error);
 		#region inner
-		class Axis_ItemState : ItemStateCore {
+		class Axis_ItemState : ItemStateCore, ItemController {
 			internal FrameworkElement Element;
 			internal TextShim label;
 			public Axis_ItemState(int index) : base(index) { }
 			public void ResetElement() { Element = null; }
 			public void SetElement(FrameworkElement cs) { Element = cs; }
+			public void Entering(ItemTransition it) { }
+			public void Live(ItemTransition it) { }
+			public void Exiting(ItemTransition it) { }
 		}
 		#endregion
 		#region DPs
